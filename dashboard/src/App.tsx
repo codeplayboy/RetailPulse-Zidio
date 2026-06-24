@@ -189,14 +189,14 @@ function EnvironmentScene({ theme }: { theme: ThemeMode }) {
     }
   });
 
-  const primary = theme === "dark" ? "#7c3aed" : "#6d28d9";
-  const secondary = theme === "dark" ? "#4f46e5" : "#c4b5fd";
+  const primary = theme === "dark" ? "#a855f7" : "#9333ea";
+  const secondary = theme === "dark" ? "#22d3ee" : "#0891b2";
 
   return (
     <>
-      <ambientLight intensity={theme === "dark" ? 1.4 : 2.0} />
-      <pointLight position={[4.5, 4, 5]} intensity={theme === "dark" ? 48 : 32} color={primary} />
-      <pointLight position={[-5, -2, 3]} intensity={theme === "dark" ? 28 : 36} color={secondary} />
+      <ambientLight intensity={theme === "dark" ? 1.8 : 2.2} />
+      <pointLight position={[4.5, 4, 5]} intensity={theme === "dark" ? 72 : 44} color={primary} />
+      <pointLight position={[-5, -2, 3]} intensity={theme === "dark" ? 48 : 52} color={secondary} />
       <group ref={group}>
         <points>
           <bufferGeometry>
