@@ -48,6 +48,28 @@ def identify_overstock_risk(
     raise NotImplementedError
 
 
+def optimize_inventory(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Optimize inventory levels based on demand and current stock.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe with columns: Average_Daily_Demand, Net_Quantity
+    
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with added columns: Safety_Stock, Reorder_Point, Inventory_Gap
+    """
+    result = df.copy()
+    result["Safety_Stock"] = result["Average_Daily_Demand"] * 7
+    result["Reorder_Point"] = result["Average_Daily_Demand"] * 14
+    result["Inventory_Gap"] = result["Reorder_Point"] - result["Net_Quantity"]
+    
+    return result
+
+
 def generate_recommendations(
     inventory_data: pd.DataFrame,
 ) -> pd.DataFrame:
