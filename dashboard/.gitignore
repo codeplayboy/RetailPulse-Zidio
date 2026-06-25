@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Data & models (keep folders, ignore large artefacts)
+data/*.csv
+models/*.pkl
+models/*.joblib
+*.h5
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Reports / exports
+*.xlsx
+*.pdf
+
+# React / Vite
+node_modules/
+dist/
+*.tsbuildinfo
+vite*.log
+vite.config.js
+vite.config.d.ts
+
+# Local QA screenshots
+react-dashboard-*.png

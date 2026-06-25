@@ -1,0 +1,31 @@
+# ============================================================
+# RetailPulse - AI-Powered Customer Analytics & Demand
+# Forecasting Platform
+# Python 3.11
+# ============================================================
+
+# --- Core app ---
+streamlit==1.39.0
+
+# --- Data processing ---
+pandas==2.2.3
+numpy==1.26.4
+
+# --- Visualization ---
+plotly==5.24.1
+
+# --- Machine Learning ---
+scikit-learn==1.5.2
+
+# --- Forecasting (optional but recommended) ---
+# Prophet is heavy; the app degrades gracefully to a
+# statistical fallback forecaster if it is not installed.
+prophet==1.1.6
+
+# --- Reports / Export ---
+openpyxl==3.1.5          # Excel export
+reportlab==4.2.5         # PDF export
+
+# --- API-ready backend (optional, FastAPI architecture) ---
+fastapi==0.115.5
+uvicorn==0.32.1
