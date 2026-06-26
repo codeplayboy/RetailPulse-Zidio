@@ -489,8 +489,10 @@ function KpiGrid({ items = kpis }: { items?: typeof kpis }) {
           key={label}
           className={`metric-card tone-${tone} ${anomalyLens && (tone === "danger" || index === 1) ? "anomaly-hit" : ""}`}
           style={{ "--replay": replayProgress / 100 } as CSSProperties}
-          whileHover={{ y: -6, rotateX: 2 }}
-          transition={{ type: "spring", stiffness: 260, damping: 22 }}
+          initial={{ opacity: 0, y: 28, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 220, damping: 24, delay: index * 0.07 }}
+          whileHover={{ y: -6, rotateX: 2, transition: { type: "spring", stiffness: 260, damping: 22, delay: 0 } }}
         >
           <div className="metric-top"><span><Icon size={18} /></span></div>
           <AnimatedValue value={value} />
@@ -621,6 +623,19 @@ function RevenueLine({ compact = false }: { compact?: boolean }) {
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<HTMLDivElement>(null);
+  const strokeGradRef = useRef<SVGLinearGradientElement>(null);
+
+  useGSAP(() => {
+    const grad = strokeGradRef.current;
+    if (!grad) return;
+    gsap.to(grad, {
+      attr: { x1: "0.32", x2: "1.32" },
+      duration: 3.2,
+      ease: "sine.inOut",
+      yoyo: true,
+      repeat: -1,
+    });
+  }, { scope: wrapperRef, dependencies: [] });
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!wrapperRef.current || !scannerRef.current) return;
@@ -638,7 +653,7 @@ function RevenueLine({ compact = false }: { compact?: boolean }) {
       <div ref={scannerRef} className="revenue-scanner" aria-hidden="true" />
       <svg className={compact ? "revenue-line compact" : "revenue-line"} viewBox="0 0 560 190" role="img" aria-label="Revenue trend chart">
         <defs>
-          <linearGradient id={lineGradient} x1="0" x2="1">
+          <linearGradient ref={strokeGradRef} id={lineGradient} x1="0" x2="1">
             <stop offset="0%" stopColor="var(--chart-a)" />
             <stop offset="52%" stopColor="var(--chart-b)" />
             <stop offset="100%" stopColor="var(--accent-gold)" />
@@ -1591,6 +1606,19 @@ function Dashboard() {
     const timer = window.setTimeout(() => setToast(""), 2800);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  // Subtle mouse parallax on the 3D scene layer
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const scene = root.current?.querySelector<HTMLElement>(".scene-layer");
+      if (!scene) return;
+      const x = (e.clientX / window.innerWidth - 0.5) * 14;
+      const y = (e.clientY / window.innerHeight - 0.5) * 9;
+      scene.style.transform = `translate(${x}px, ${y}px)`;
+    };
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   usePageAnimation(root, [activePage, theme, loading]);
 
