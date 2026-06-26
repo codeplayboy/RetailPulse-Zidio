@@ -12,11 +12,13 @@
     "@gsap/react": "^2.1.2",
     "@react-three/drei": "^10.5.1",
     "@react-three/fiber": "^9.1.2",
+    "@remotion/player": "^4.0.483",
     "framer-motion": "^12.18.1",
     "gsap": "^3.13.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "remotion": "^4.0.483",
     "three": "^0.177.0"
   },
   "devDependencies": {
