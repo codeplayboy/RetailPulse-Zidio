@@ -16,8 +16,8 @@ interface InViewProps {
 export function InView({
   children,
   variants = {
-    hidden: { opacity: 0, y: 20, filter: 'blur(6px)' },
-    visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 },
   },
   transition = { duration: 0.44, ease: [0.22, 1, 0.36, 1] },
   viewOptions = { amount: 0, margin: '200px' },

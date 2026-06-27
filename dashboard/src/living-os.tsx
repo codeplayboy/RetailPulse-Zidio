@@ -208,8 +208,8 @@ export function AnimatedValue({ value, className }: { value: string; className?:
     <motion.strong
       ref={node}
       className={className}
-      initial={reducedMotion ? false : { opacity: 0, y: 12, filter: "blur(10px)", scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)", scale: 1 }}
+      initial={reducedMotion ? false : { opacity: 0, y: 12, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 200, damping: 22, delay: 0.05 }}
     >
       {Number.isNaN(target) ? value : formatAnimatedValue(value, 0)}

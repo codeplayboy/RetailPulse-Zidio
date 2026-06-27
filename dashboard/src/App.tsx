@@ -53,6 +53,7 @@ import { Component, lazy, Suspense, type CSSProperties, type ReactNode, useCallb
 import { createPortal } from "react-dom";
 import * as THREE from "three";
 import "./App.css";
+import { createFallbackDashboardData, useRetailPulseData } from "./data/retailpulse-data";
 import {
   AnimatedValue,
   ExecutiveBriefing,
@@ -81,7 +82,9 @@ type NavItem = {
   stat: string;
 };
 
-const navItems: NavItem[] = [
+let dashboardDataState = createFallbackDashboardData();
+
+let navItems: NavItem[] = [
   { id: "overview", label: "Executive Overview", kicker: "Board pulse", icon: BarChart3, stat: "$15.66M" },
   { id: "segmentation", label: "Customer Segmentation", kicker: "RFM + KMeans", icon: Users, stat: "2.79K" },
   { id: "churn", label: "Churn Prediction", kicker: "Retention risk", icon: TrendingDown, stat: "34.4%" },
@@ -92,7 +95,7 @@ const navItems: NavItem[] = [
   { id: "settings", label: "Settings", kicker: "Models + controls", icon: Settings, stat: "Live" },
 ];
 
-const pageMeta: Record<PageId, { eyebrow: string; title: string; summary: string; primary: string; secondary: string; tertiary: string }> = {
+let pageMeta: Record<PageId, { eyebrow: string; title: string; summary: string; primary: string; secondary: string; tertiary: string }> = {
   overview: {
     eyebrow: "Retail Intelligence Command",
     title: "Revenue, customer, and operations control center.",
@@ -159,7 +162,7 @@ const pageMeta: Record<PageId, { eyebrow: string; title: string; summary: string
   },
 };
 
-const kpis = [
+let kpis = [
   { label: "Total Revenue", value: "$15.66M", delta: "+18.4%", icon: CircleDollarSign, tone: "blue" },
   { label: "Total Sales", value: "24.0K", delta: "+8.4%", icon: Activity, tone: "violet" },
   { label: "Total Customers", value: "2,790", delta: "+3.1%", icon: Users, tone: "cyan" },
@@ -170,7 +173,7 @@ const kpis = [
   { label: "Monthly Growth", value: "+12.6%", delta: "+12.6%", icon: TrendingUp, tone: "violet" },
 ];
 
-const segments = [
+let segments = [
   ["Champions", "438", "$12.4K", "VIP early access and referral flywheel", "96"],
   ["Loyal Customers", "692", "$8.7K", "Premium upsell and review requests", "88"],
   ["Potential Loyalists", "511", "$5.2K", "Membership onboarding sequence", "74"],
@@ -179,7 +182,7 @@ const segments = [
   ["Lost Customers", "198", "$1.1K", "Low-cost reactivation campaign", "26"],
 ];
 
-const activity = [
+let activity = [
   ["Demand spike detected", "Electronics volume rising across western region", "now", "critical"],
   ["Inventory shield armed", "12 SKUs moved above reorder threshold", "4m", "secure"],
   ["AI segment refresh", "Champions cohort gained 38 premium buyers", "11m", "info"],
@@ -187,11 +190,93 @@ const activity = [
   ["Report pack generated", "Customer board report is ready for export", "31m", "secure"],
 ];
 
-const bars = [58, 86, 64, 92, 74, 96, 69, 88, 78, 100, 82, 93];
-const profitBars = [42, 58, 46, 68, 53, 74, 49, 66, 57, 79, 61, 72];
-const heat = [72, 46, 88, 61, 94, 53, 78, 67, 91, 59, 83, 49, 76, 97, 63, 84];
-const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-const barMonths = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+let bars = [58, 86, 64, 92, 74, 96, 69, 88, 78, 100, 82, 93];
+let profitBars = [42, 58, 46, 68, 53, 74, 49, 66, 57, 79, 61, 72];
+let heat = [72, 46, 88, 61, 94, 53, 78, 67, 91, 59, 83, 49, 76, 97, 63, 84];
+let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+let barMonths = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+function buildNavItems() {
+  return [
+    { id: "overview", label: "Executive Overview", kicker: "Board pulse", icon: BarChart3, stat: dashboardDataState.navStats.overview },
+    { id: "segmentation", label: "Customer Segmentation", kicker: "RFM + KMeans", icon: Users, stat: dashboardDataState.navStats.segmentation },
+    { id: "churn", label: "Churn Prediction", kicker: "Retention risk", icon: TrendingDown, stat: dashboardDataState.navStats.churn },
+    { id: "forecasting", label: "Demand Forecasting", kicker: "Prophet horizon", icon: LineChart, stat: dashboardDataState.navStats.forecasting },
+    { id: "inventory", label: "Inventory Optimization", kicker: "Stock policy", icon: PackageCheck, stat: dashboardDataState.navStats.inventory },
+    { id: "reports", label: "Analytics & Reports", kicker: "Export center", icon: Table2, stat: dashboardDataState.navStats.reports },
+    { id: "media", label: "Media Studio", kicker: "Video stories", icon: Film, stat: "Remotion" },
+    { id: "settings", label: "Settings", kicker: "Models + controls", icon: Settings, stat: dashboardDataState.loading ? "Loading" : "Live" },
+  ] satisfies NavItem[];
+}
+
+function buildPageMeta(): typeof pageMeta {
+  return {
+    overview: {
+      eyebrow: "Retail Intelligence Command",
+      title: "Revenue, customer, and operations control center.",
+      summary: "A dense executive view combining revenue momentum, active demand, segment health, category share, and model-driven recommendations.",
+      primary: dashboardDataState.hero.overview.primary,
+      secondary: dashboardDataState.hero.overview.secondary,
+      tertiary: dashboardDataState.hero.overview.tertiary,
+    },
+    segmentation: {
+      eyebrow: "Customer Intelligence",
+      title: "RFM cohorts, loyalty signals, and next-best actions.",
+      summary: "Track segment movement, customer lifetime value, KMeans clusters, and tactical playbooks for retention and monetization.",
+      primary: dashboardDataState.hero.segmentation.primary,
+      secondary: dashboardDataState.hero.segmentation.secondary,
+      tertiary: dashboardDataState.hero.segmentation.tertiary,
+    },
+    churn: {
+      eyebrow: "Retention Operations",
+      title: "Predict churn before revenue leaves the system.",
+      summary: "Expose high-risk customers, churn drivers, revenue-at-risk, and immediate intervention recommendations in one response cockpit.",
+      primary: dashboardDataState.hero.churn.primary,
+      secondary: dashboardDataState.hero.churn.secondary,
+      tertiary: dashboardDataState.hero.churn.tertiary,
+    },
+    forecasting: {
+      eyebrow: "Demand Simulation",
+      title: "Forecast revenue, demand, and seasonal pressure.",
+      summary: "Scenario controls, confidence bands, seasonality, and granular forecast tables for planning inventory and marketing moves.",
+      primary: dashboardDataState.hero.forecasting.primary,
+      secondary: dashboardDataState.hero.forecasting.secondary,
+      tertiary: dashboardDataState.hero.forecasting.tertiary,
+    },
+    inventory: {
+      eyebrow: "Stock Command",
+      title: "Keep SKUs balanced across reorder, overstock, and risk.",
+      summary: "Monitor stock health, critical inventory, heatmaps, alerts, and reorder guidance for operational efficiency.",
+      primary: dashboardDataState.hero.inventory.primary,
+      secondary: dashboardDataState.hero.inventory.secondary,
+      tertiary: dashboardDataState.hero.inventory.tertiary,
+    },
+    reports: {
+      eyebrow: "Executive Reporting",
+      title: "Board-ready exports and live report previews.",
+      summary: "Create customer, sales, churn, forecast, and inventory packs with structured tables and export-ready data modules.",
+      primary: dashboardDataState.hero.reports.primary,
+      secondary: dashboardDataState.hero.reports.secondary,
+      tertiary: dashboardDataState.hero.reports.tertiary,
+    },
+    media: {
+      eyebrow: "Remotion Media Studio",
+      title: "Turn live analytics into cinematic data stories.",
+      summary: "Preview executive video briefings, chart stories, and operational replays using the current RetailPulse visual system and data signals.",
+      primary: "7 story scenes",
+      secondary: "16:9 preview",
+      tertiary: "MP4-ready flow",
+    },
+    settings: {
+      eyebrow: "Platform Configuration",
+      title: "Control models, themes, notifications, and teams.",
+      summary: "Manage RetailPulse intelligence settings, forecast defaults, theme system, alert rules, and access controls.",
+      primary: "Hybrid model",
+      secondary: "95% service level",
+      tertiary: "Alerts enabled",
+    },
+  };
+}
 
 // ── FEATURE 1: MAGNETIC CURSOR ───────────────────────────────────────────────
 function useMagneticCursor(enabled: boolean) {
@@ -706,13 +791,10 @@ function usePageAnimation(root: React.RefObject<HTMLDivElement | null>, deps: un
   useGSAP(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const q = gsap.utils.selector(root);
-    const entranceTargets = q(".animate-in");
-    const lineTargets = q(".draw-line");
-    const revealTargets = q(".reveal");
     const dur = reduceMotion ? 0.001 : 0.72;
     gsap.defaults({ ease: "power3.out", duration: dur });
 
-    // Dramatic entrance: y + scale collapse (no blur — avoids repaint)
+    const entranceTargets = q(".animate-in");
     if (entranceTargets.length) {
       gsap.fromTo(
         entranceTargets,
@@ -721,7 +803,7 @@ function usePageAnimation(root: React.RefObject<HTMLDivElement | null>, deps: un
       );
     }
 
-    // Revenue SVG line draw (unchanged)
+    const lineTargets = q(".draw-line");
     if (lineTargets.length) {
       gsap.fromTo(
         lineTargets,
@@ -729,31 +811,6 @@ function usePageAnimation(root: React.RefObject<HTMLDivElement | null>, deps: un
         { strokeDashoffset: 0, duration: reduceMotion ? 0.001 : 1.4, delay: 0.15 },
       );
     }
-
-    // Scroll reveals: fire well before visible — never blank on scroll
-    if (revealTargets.length) {
-      ScrollTrigger.batch(revealTargets, {
-        start: "top 150%",
-        once: true,
-        onEnter: (items) =>
-          gsap.fromTo(
-            items,
-            { y: 28, opacity: 0, scale: 0.96 },
-            { y: 0, opacity: 1, scale: 1, stagger: 0.04, overwrite: true, duration: 0.6 },
-          ),
-      });
-    }
-
-    // KPI counter cascade — pop numbers in with a bounce
-    const kpiNumbers = q(".kpi-value");
-    if (kpiNumbers.length) {
-      gsap.fromTo(
-        kpiNumbers,
-        { opacity: 0, y: 8, scale: 0.9 },
-        { opacity: 1, y: 0, scale: 1, ease: "back.out(1.6)", stagger: 0.04, delay: 0.05, duration: 0.45 },
-      );
-    }
-
   }, { scope: root, dependencies: deps, revertOnUpdate: true });
 }
 
@@ -1113,12 +1170,37 @@ function Panel({
   );
 }
 
+function createLinePath(values: number[], width: number, height: number, padding: { left: number; right: number; top: number; bottom: number }) {
+  if (!values.length) return "";
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  return values.map((value, index) => {
+    const x = padding.left + (innerWidth / Math.max(values.length - 1, 1)) * index;
+    const normalized = max === min ? 0.5 : (value - min) / (max - min);
+    const y = padding.top + innerHeight - normalized * innerHeight;
+    return `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+}
+
 function RevenueLine({ compact = false }: { compact?: boolean }) {
   const gradientId = useId().replace(/:/g, "");
   const lineGradient = `lineStroke-${gradientId}`;
   const areaGradient = `lineArea-${gradientId}`;
-  const path = "M24,150 C70,116 92,128 136,88 C178,46 224,118 278,72 C330,24 374,76 426,42 C474,20 506,50 538,24";
-  const comparePath = "M24,162 C72,140 108,148 154,110 C204,76 232,128 284,98 C330,66 380,104 426,72 C474,48 504,82 538,58";
+  const values = compact ? dashboardDataState.compactSeries : dashboardDataState.revenueSeries;
+  const compareValues = compact ? dashboardDataState.revenueSeries : dashboardDataState.compareSeries;
+  const path = createLinePath(values, 560, 190, { left: 24, right: 22, top: 22, bottom: 24 });
+  const comparePath = createLinePath(compareValues, 560, 190, { left: 24, right: 22, top: 34, bottom: 36 });
+  const areaPath = `${path} L538,166 L24,166 Z`;
+  const pointMax = Math.max(...values, 1);
+  const pointMin = Math.min(...values, 0);
+  const points = values.map((value, index) => {
+    const x = 24 + ((538 - 24) / Math.max(values.length - 1, 1)) * index;
+    const normalized = pointMax === pointMin ? 0.5 : (value - pointMin) / (pointMax - pointMin);
+    const y = 22 + (166 - 22) - normalized * (166 - 22);
+    return { x, y };
+  });
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<HTMLDivElement>(null);
@@ -1165,12 +1247,24 @@ function RevenueLine({ compact = false }: { compact?: boolean }) {
         </defs>
         {[42, 78, 114, 150].map((y) => <line key={y} x1="24" x2="538" y1={y} y2={y} className="grid-line" />)}
         {[0, 50, 100, 150].map((v, i) => <text key={v} x="0" y={154 - i * 36} className="axis-label">${v}k</text>)}
-        {[24, 126, 228, 330, 432, 538].map((x, i) => <text key={x} x={x} y="182" className="axis-label">{months[i]}</text>)}
+        {months.map((month, index) => {
+          const x = 24 + ((538 - 24) / Math.max(months.length - 1, 1)) * index;
+          return <text key={`${month}-${index}`} x={x} y="182" className="axis-label">{month}</text>;
+        })}
         <line x1="24" x2="538" y1="92" y2="92" className="target-line" />
-        <path d={`${path} L538,166 L24,166 Z`} fill={`url(#${areaGradient})`} />
+        <path d={areaPath} fill={`url(#${areaGradient})`} />
         <path className="compare-line" d={comparePath} />
         <path className="draw-line" style={{ stroke: `url(#${lineGradient})` }} d={path} />
-        {[24, 136, 278, 426, 538].map((x, i) => <circle key={x} cx={x} cy={[150, 88, 72, 42, 24][i]} r="4.8" className="line-dot bio-pulse" style={{ stroke: `url(#${lineGradient})`, animationDelay: `${i * 0.38}s` }} />)}
+        {points.map((point, index) => (
+          <circle
+            key={`${point.x}-${index}`}
+            cx={point.x}
+            cy={point.y}
+            r="4.8"
+            className="line-dot bio-pulse"
+            style={{ stroke: `url(#${lineGradient})`, animationDelay: `${index * 0.22}s` }}
+          />
+        ))}
       </svg>
     </div>
   );
@@ -1238,10 +1332,19 @@ function RevenueBars() {
   );
 }
 
-function Donut({ labels = ["Electronics", "Home", "Apparel", "Beauty", "Groceries"] }: { labels?: string[] }) {
+function Donut({
+  labels = ["Electronics", "Home", "Apparel", "Beauty", "Groceries"],
+  values: valuesProp,
+}: { labels?: string[]; values?: number[] }) {
   const root = useRef<HTMLDivElement>(null);
   const { activeCategory, setActiveCategory, reducedMotion } = useLivingOS();
-  const values = labels.length === 6 ? [24, 20, 18, 15, 13, 10] : [28.9, 20.7, 18.9, 17.7, 13.8];
+  const values =
+    valuesProp
+    ?? (labels.length === 6
+      ? dashboardDataState.segmentValues
+      : labels[0] === "Customer"
+        ? dashboardDataState.reportMixValues
+        : dashboardDataState.categoryValues);
   const colors = ["#a855f7", "#22d3ee", "#34d399", "#fbbf24", "#f472b6", "#60a5fa"];
   const segmentColors = colors.slice(0, values.length);
 
@@ -1341,20 +1444,30 @@ function Donut({ labels = ["Electronics", "Home", "Apparel", "Beauty", "Grocerie
   );
 }
 
-function StackedBars() {
+function StackedBars({ values = bars.slice(0, 7), labels = ["Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"] }: { values?: number[]; labels?: string[] }) {
   const { replayProgress } = useLivingOS();
   return (
     <div className="stacked-bars">
-      {bars.slice(0, 7).map((value, i) => (
-        <span key={i} style={{ "--h": `${value * (.65 + replayProgress * .0035)}%`, "--delay": `${i * 70}ms` } as CSSProperties}><i /><small>{["Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"][i]}</small></span>
+      {values.slice(0, 7).map((value, i) => (
+        <span key={i} style={{ "--h": `${value * (.65 + replayProgress * .0035)}%`, "--delay": `${i * 70}ms` } as CSSProperties}><i /><small>{labels[i] ?? `P${i + 1}`}</small></span>
       ))}
     </div>
   );
 }
 
-function HorizontalBars({ labels = ["Electronics", "Home & Kitchen", "Apparel", "Beauty", "Groceries"] }: { labels?: string[] }) {
+function HorizontalBars({
+  labels = ["Electronics", "Home & Kitchen", "Apparel", "Beauty", "Groceries"],
+  values,
+}: { labels?: string[]; values?: number[] }) {
   const root = useRef<HTMLDivElement>(null);
   const { activeCategory, setActiveCategory, replayProgress, reducedMotion } = useLivingOS();
+  const resolvedValues =
+    values
+    ?? (labels[0] === "Recency"
+      ? dashboardDataState.featureValues
+      : labels.length === dashboardDataState.forecastCategoryLabels.length && labels[0] === dashboardDataState.forecastCategoryLabels[0]
+        ? dashboardDataState.forecastCategoryValues
+        : dashboardDataState.horizontalBarValues);
 
   // ScrollTrigger: bars scaleX from 0 to 1 on scroll-in, staggered
   useGSAP(() => {
@@ -1379,7 +1492,7 @@ function HorizontalBars({ labels = ["Electronics", "Home & Kitchen", "Apparel", 
   return (
     <div ref={root} className="hbars">
       {labels.map((label, i) => {
-        const value = 92 - i * 10;
+        const value = resolvedValues[i] ?? Math.max(28, 92 - i * 10);
         const selected = activeCategory === label || (activeCategory === "Home" && label === "Home & Kitchen");
         return (
           <button
@@ -1408,11 +1521,10 @@ function HeatMap() {
     const cells = root.current.querySelectorAll("span");
     gsap.fromTo(
       cells,
-      { opacity: 0, scale: 0.55, filter: "blur(6px)" },
+      { opacity: 0, scale: 0.55 },
       {
         opacity: 1,
         scale: 0.7,
-        filter: "blur(0px)",
         duration: 0.42,
         ease: "back.out(2)",
         delay: (i: number) => (i % COLS + Math.floor(i / COLS)) * 0.038,
@@ -1511,14 +1623,14 @@ function GaugeDial({ value }: { value: number }) {
 function ActivityFeed() {
   return (
     <InView
-      variants={{ hidden: { opacity: 0, y: 14, filter: 'blur(5px)' }, visible: { opacity: 1, y: 0, filter: 'blur(0px)' } }}
+      variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       viewOptions={{ amount: 0, margin: "200px" }}
       once
     >
       <div className="activity-feed">
         {activity.map(([title, body, time, tone], index) => (
-          <motion.article initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * .03 }} key={title} className={`activity-${tone}`}>
+          <motion.article initial={{ opacity: 0, x: 8 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "0px 0px 200px 0px" }} transition={{ delay: index * .03 }} key={title} className={`activity-${tone}`}>
             <span />
             <div>
               <strong><TextEffect per="word" preset="fade" delay={index * 0.03} speedReveal={4} as="span">{title}</TextEffect></strong>
@@ -1535,7 +1647,7 @@ function ActivityFeed() {
 function LuxuryTable({ rows, wide = false }: { rows: string[][]; wide?: boolean }) {
   return (
     <div className={wide ? "lux-table wide" : "lux-table"}>
-      {rows.map((row, index) => <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * .045 }} key={row.join("-")}>{row.map((cell) => <span key={cell}>{cell}</span>)}</motion.div>)}
+      {rows.map((row, index) => <motion.div initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "0px 0px 200px 0px" }} transition={{ delay: index * .045 }} key={row.join("-")}>{row.map((cell) => <span key={cell}>{cell}</span>)}</motion.div>)}
     </div>
   );
 }
@@ -1712,10 +1824,10 @@ function OverviewPage() {
       <KpiGrid />
       <section className="dashboard-grid overview-layout">
         <Panel className="wide-panel" title="Revenue Trend" kicker="Daily revenue across selected window" icon={LineChart}><RevenueLine /><RevenueBars /></Panel>
-        <Panel title="Product Category Analysis" kicker="Revenue share by category" icon={Layers3}><Donut /></Panel>
+        <Panel title="Product Category Analysis" kicker="Revenue share by category" icon={Layers3}><Donut labels={dashboardDataState.categoryLabels} values={dashboardDataState.categoryValues} /></Panel>
         <Panel title="Live Activity Feed" kicker="Model, inventory, and segment stream" icon={RadioTower}><ActivityFeed /></Panel>
-        <Panel title="Monthly Performance" kicker="Revenue and profit by month" icon={BarChart3}><StackedBars /></Panel>
-        <Panel title="Top Selling Products" kicker="Ranked by total revenue" icon={Crown}><LuxuryTable rows={[["Blender", "$1.42M", "+19%"], ["Perfume", "$1.18M", "+14%"], ["Sneakers", "$982K", "+11%"], ["Smartwatch", "$814K", "+9%"]]} /></Panel>
+        <Panel title="Monthly Performance" kicker="Revenue and profit by month" icon={BarChart3}><StackedBars values={bars.slice(-7)} labels={months} /></Panel>
+        <Panel title="Top Selling Products" kicker="Ranked by total revenue" icon={Crown}><LuxuryTable rows={dashboardDataState.topProductsRows} /></Panel>
         <Panel title="3D Volume Analysis" kicker="Interactive three-dimensional volume bars" icon={BarChart3}><VolumeBars3D /></Panel>
       </section>
     </>
@@ -1728,13 +1840,7 @@ function SegmentationPage() {
 
   return (
     <>
-      <KpiGrid items={[
-        { label: "Total Customers", value: "2,790", delta: "+3.1%", icon: Users, tone: "cyan" },
-        { label: "Champions", value: "438", delta: "+4.5%", icon: Crown, tone: "gold" },
-        { label: "At-Risk Customers", value: "247", delta: "-2.1%", icon: TrendingDown, tone: "danger" },
-        { label: "Avg Customer LTV", value: "$8.4K", delta: "+6.8%", icon: Gem, tone: "violet" },
-        { label: "Avg RFM Score", value: "11.8/15", delta: "+1.3", icon: Gauge, tone: "green" },
-      ]} />
+      <KpiGrid items={dashboardDataState.segmentationKpis} />
       <section className="tab-strip animate-in" aria-label="Customer intelligence views">
         {tabs.map((tab) => (
           <button type="button" aria-pressed={activeTab === tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)} key={tab}>
@@ -1747,8 +1853,8 @@ function SegmentationPage() {
         <span className="tab-status">Viewing {activeTab}</span>
       </section>
       <section className="dashboard-grid">
-        <Panel title="Segment Distribution" kicker="Share of customer base" icon={Users}><Donut labels={["Champions", "Loyal", "Potential", "New", "At Risk", "Lost"]} /></Panel>
-        <Panel title="Customer Lifetime Value" kicker="Average CLV by segment" icon={Gem}><HorizontalBars /></Panel>
+        <Panel title="Segment Distribution" kicker="Share of customer base" icon={Users}><Donut labels={dashboardDataState.segmentLabels} values={dashboardDataState.segmentValues} /></Panel>
+        <Panel title="Customer Lifetime Value" kicker="Average CLV by segment" icon={Gem}><HorizontalBars labels={dashboardDataState.horizontalBarLabels} values={dashboardDataState.horizontalBarValues} /></Panel>
         <Panel title="KMeans Cluster Scatter" kicker="Recency vs monetary, sized by frequency" icon={Brain}><ScatterPlot /></Panel>
         <Panel title="RFM Score Heatmap" kicker="Recency, frequency, monetary heat" icon={Eye}><HeatMap /></Panel>
         <Panel title="Segment Force Graph" kicker="Live physics — customer topology" icon={RadioTower}><ForceGraph /></Panel>
@@ -1762,20 +1868,14 @@ function SegmentationPage() {
 function ChurnPage() {
   return (
     <>
-      <KpiGrid items={[
-        { label: "High Risk", value: "247", delta: "+2.4%", icon: TrendingDown, tone: "danger" },
-        { label: "Medium Risk", value: "602", delta: "+0.8%", icon: Activity, tone: "gold" },
-        { label: "Low Risk", value: "1,941", delta: "-1.1%", icon: ShieldCheck, tone: "green" },
-        { label: "Revenue at Risk", value: "$2.91M", delta: "-4.0%", icon: WalletCards, tone: "danger" },
-        { label: "Avg Churn Prob.", value: "31.8%", delta: "-2.6%", icon: Gauge, tone: "violet" },
-      ]} />
+      <KpiGrid items={dashboardDataState.churnKpis} />
       <section className="dashboard-grid">
         <Panel title="Churn Probability Distribution" kicker="Across the customer base" icon={BarChart3}><RevenueBars /></Panel>
         <Panel title="Risk Analysis" kicker="Customers by risk band" icon={Gauge}><RiskMatrix /></Panel>
-        <Panel title="Feature Importance" kicker="What drives churn" icon={Brain}><HorizontalBars labels={["Recency", "Satisfaction", "Frequency", "Email opens", "Support tickets"]} /></Panel>
-        <Panel title="Churn Timeline" kicker="Monthly churn events over last 6 months" icon={CalendarDays}><StackedBars /></Panel>
+        <Panel title="Feature Importance" kicker="What drives churn" icon={Brain}><HorizontalBars labels={dashboardDataState.featureLabels} values={dashboardDataState.featureValues} /></Panel>
+        <Panel title="Churn Timeline" kicker="Monthly churn events over last 6 months" icon={CalendarDays}><StackedBars values={bars.slice(-6)} labels={months} /></Panel>
         <Panel title="Churn Neural Network" kicker="Animated prediction model visualization" icon={Brain}><ChurnNeuralNet /></Panel>
-        <Panel className="wide-panel" title="Retention Recommendation Engine" kicker="Top at-risk customers + suggested action" icon={Zap}><LuxuryTable rows={[["C00421", "High", "91.2%", "$18.2K", "Offer Discount + Personal Outreach"], ["C01884", "High", "87.4%", "$12.7K", "VIP Concierge Call"], ["C00941", "Medium", "66.8%", "$8.9K", "Loyalty Program Enrollment"], ["C02016", "Medium", "61.5%", "$6.3K", "Personalized Campaign"]]} wide /></Panel>
+        <Panel className="wide-panel" title="Retention Recommendation Engine" kicker="Top at-risk customers + suggested action" icon={Zap}><LuxuryTable rows={dashboardDataState.churnRecommendationRows} wide /></Panel>
       </section>
     </>
   );
@@ -1808,18 +1908,13 @@ function ForecastingPage() {
           <input type="range" min={0} max={20} value={seasonalFactor} onChange={(e) => setScenario((current) => ({ ...current, seasonal: Number(e.target.value) }))} aria-label="Seasonal factor percentage" />
         </div>
       </section>
-      <KpiGrid items={[
-        { label: "Projected Revenue", value: `$${projected}M`, delta, icon: LineChart, tone: "cyan" },
-        { label: "Forecast Engine", value: "Prophet", delta: "Hybrid", icon: Brain, tone: "violet" },
-        { label: "Backtest MAPE", value: "7.8%", delta: "-1.2%", icon: Gauge, tone: "green" },
-        { label: "Forecast Accuracy", value: "92.2%", delta: "+2.1%", icon: TrendingUp, tone: "gold" },
-      ]} />
+      <KpiGrid items={dashboardDataState.forecastingKpis.map((item, index) => index === 0 ? { ...item, delta, value: item.value } : item)} />
       <section className="dashboard-grid">
         <Panel className="wide-panel" title="Historical Demand + Forecast" kicker="Confidence band and target line" icon={LineChart}><RevenueLine /><RevenueBars /></Panel>
         <Panel title="Seasonal Trend" kicker="30-day rolling average" icon={Activity}><RevenueLine compact /></Panel>
-        <Panel title="Weekly Trend" kicker="Average demand by day of week" icon={CalendarDays}><StackedBars /></Panel>
-        <Panel title="Forecast Detail" kicker="Day-by-day projection" icon={Table2}><LuxuryTable rows={[["Jun 24", "$142K", "$119K", "$166K"], ["Jun 25", "$148K", "$124K", "$172K"], ["Jun 26", "$153K", "$128K", "$181K"], ["Jun 27", "$166K", "$139K", "$195K"]]} /></Panel>
-        <Panel title="Category Forecast" kicker="Projected demand by product line" icon={Layers3}><HorizontalBars /></Panel>
+        <Panel title="Weekly Trend" kicker="Average demand by day of week" icon={CalendarDays}><StackedBars values={bars.slice(-7)} labels={["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]} /></Panel>
+        <Panel title="Forecast Detail" kicker="Day-by-day projection" icon={Table2}><LuxuryTable rows={dashboardDataState.forecastRows} /></Panel>
+        <Panel title="Category Forecast" kicker="Projected demand by product line" icon={Layers3}><HorizontalBars labels={dashboardDataState.forecastCategoryLabels} values={dashboardDataState.forecastCategoryValues} /></Panel>
       </section>
     </>
   );
@@ -1828,19 +1923,13 @@ function ForecastingPage() {
 function InventoryPage() {
   return (
     <>
-      <KpiGrid items={[
-        { label: "SKUs Tracked", value: "25", delta: "Live", icon: PackageCheck, tone: "cyan" },
-        { label: "Critical Stock", value: "4", delta: "-3.0%", icon: TrendingDown, tone: "danger" },
-        { label: "Understock", value: "7", delta: "+1", icon: Activity, tone: "gold" },
-        { label: "Overstock", value: "3", delta: "-2", icon: Layers3, tone: "violet" },
-        { label: "Units to Reorder", value: "1,824", delta: "Auto", icon: CloudDownload, tone: "green" },
-      ]} />
+      <KpiGrid items={dashboardDataState.inventoryKpis} />
       <section className="dashboard-grid">
-        <Panel title="Inventory Health" kicker="Weighted across all SKUs" icon={Gauge}><GaugeDial value={82} /></Panel>
+        <Panel title="Inventory Health" kicker="Weighted across all SKUs" icon={Gauge}><GaugeDial value={dashboardDataState.inventoryHealthScore} /></Panel>
         <Panel title="Stock Alerts" kicker="Items needing attention now" icon={Bell}><ActivityFeed /></Panel>
         <Panel title="Product Stock Heatmap" kicker="Average days-of-cover by category" icon={Layers3}><HeatMap /></Panel>
-        <Panel title="Reorder Schedule" kicker="Upcoming fulfillment orders" icon={CalendarDays}><StackedBars /></Panel>
-        <Panel className="wide-panel" title="Inventory Recommendations" kicker="Suggested reorder plan" icon={Table2}><LuxuryTable rows={[["P1008", "Smartwatch", "Critical", "420 units"], ["P1011", "Perfume", "Low", "280 units"], ["P1017", "Coffee Maker", "Healthy", "0 units"], ["P1023", "Sneakers", "Overstock", "Promotion"]]} /></Panel>
+        <Panel title="Reorder Schedule" kicker="Upcoming fulfillment orders" icon={CalendarDays}><StackedBars values={heat.slice(0, 7)} labels={["P1", "P2", "P3", "P4", "P5", "P6", "P7"]} /></Panel>
+        <Panel className="wide-panel" title="Inventory Recommendations" kicker="Suggested reorder plan" icon={Table2}><LuxuryTable rows={dashboardDataState.inventoryRecommendationRows} /></Panel>
       </section>
     </>
   );
@@ -1859,19 +1948,14 @@ function ReportsPage() {
         </div>
         {reports.map((item) => <button type="button" aria-pressed={activeReport === item} className={activeReport === item ? "active" : ""} onClick={() => setActiveReport(item)} key={item}>{item}</button>)}
       </section>
-      <KpiGrid items={[
-        { label: "Rows Previewed", value: "50", delta: "Live", icon: Table2, tone: "cyan" },
-        { label: "Full Rows", value: "2,790", delta: "CSV", icon: CloudDownload, tone: "violet" },
-        { label: "Avg CLV", value: "$8.4K", delta: "+6.8%", icon: Gem, tone: "gold" },
-        { label: "Export Success", value: "99.1%", delta: "+1.2%", icon: CheckCircle2, tone: "green" },
-      ]} />
+      <KpiGrid items={dashboardDataState.reportsKpis} />
       <section className="dashboard-grid">
         <Panel className="wide-panel" title={`${activeReport} Preview`} kicker="Live preview with CSV / Excel / PDF export" icon={CloudDownload}>
-          <LuxuryTable rows={[["C00018", "Champions", "14", "$24.2K", "$18.8K"], ["C00241", "Loyal", "12", "$19.4K", "$14.1K"], ["C01402", "At Risk", "3", "$8.1K", "$6.2K"], ["C01884", "Lost", "1", "$1.3K", "$900"]]} wide />
+          <LuxuryTable rows={dashboardDataState.reportPreviewRows[activeReport] ?? []} wide />
         </Panel>
         <Panel title="Report Velocity" kicker="Exports generated across the week" icon={BarChart3}><RevenueBars /></Panel>
         <Panel title="Export Readiness Trend" kicker="Rows validated, queued, and delivered" icon={LineChart}><RevenueLine compact /></Panel>
-        <Panel title="Report Mix" kicker="Customer, churn, forecast, and stock packs" icon={Layers3}><Donut labels={["Customer", "Sales", "Churn", "Forecast", "Inventory"]} /></Panel>
+        <Panel title="Report Mix" kicker="Customer, churn, forecast, and stock packs" icon={Layers3}><Donut labels={dashboardDataState.reportMixLabels} values={dashboardDataState.reportMixValues} /></Panel>
         <Panel title="Export Queue" kicker="Recent report automation" icon={Database}><ActivityFeed /></Panel>
       </section>
     </>
@@ -2208,6 +2292,7 @@ const pageVariants = {
 function Dashboard() {
   const root = useRef<HTMLDivElement>(null);
   const { density, anomalyLens, performanceTier } = useLivingOS();
+  const liveDashboardData = useRetailPulseData();
   const [activePage, setActivePage] = useState<PageId>("overview");
   const [pageChangeCounter, setPageChangeCounter] = useState(0);
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -2219,6 +2304,17 @@ function Dashboard() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");
+  dashboardDataState = liveDashboardData;
+  navItems = buildNavItems();
+  pageMeta = buildPageMeta();
+  kpis = liveDashboardData.kpis;
+  segments = liveDashboardData.segments;
+  activity = liveDashboardData.activity;
+  bars = liveDashboardData.bars;
+  profitBars = liveDashboardData.profitBars;
+  heat = liveDashboardData.heat;
+  months = liveDashboardData.revenueMonths;
+  barMonths = liveDashboardData.barMonths;
   const active = navItems.find((item) => item.id === activePage)!;
 
   // Track direction for slide: 1 = forward (→), -1 = backward (←)
@@ -2232,9 +2328,9 @@ function Dashboard() {
   }, [activePage]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 650);
+    const timer = window.setTimeout(() => setLoading(false), liveDashboardData.loading ? 900 : 240);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [liveDashboardData.loading]);
 
   useEffect(() => {
     window.localStorage.setItem("retailpulse-theme", theme);
@@ -2301,7 +2397,7 @@ function Dashboard() {
   // CSS Houdini paint worklet registration
   useEffect(() => {
     if ('paintWorklet' in CSS) {
-      (CSS as unknown as { paintWorklet: { addModule: (url: string) => void } }).paintWorklet.addModule('/noise-bg.js');
+      (CSS as unknown as { paintWorklet: { addModule: (url: string) => void } }).paintWorklet.addModule(`${import.meta.env.BASE_URL}noise-bg.js`);
     }
   }, []);
 
@@ -2315,7 +2411,7 @@ function Dashboard() {
     setPageChangeCounter((c) => c + 1);
   }, []);
 
-  usePageAnimation(root, [activePage, theme, loading]);
+  usePageAnimation(root, [loading]);
 
   const renderPage = () => {
     if (activePage === "overview") return <OverviewPage />;
