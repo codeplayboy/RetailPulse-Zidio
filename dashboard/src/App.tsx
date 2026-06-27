@@ -256,9 +256,7 @@ function useDepthOfField(enabled: boolean) {
         const rect = el.getBoundingClientRect();
         const ec = rect.top + rect.height / 2;
         const dist = Math.abs(ec - vc);
-        const blur = Math.min(2.8, (dist / max) * 2.8);
         const opacity = Math.max(0.62, 1 - (dist / max) * 0.38);
-        el.style.setProperty('--dof-blur', `${blur.toFixed(2)}px`);
         el.style.setProperty('--dof-opacity', `${opacity.toFixed(3)}`);
       }
     };
@@ -578,7 +576,7 @@ function VolumeBars3D() {
   if (performanceTier === 'minimal') return <RevenueBars />;
   return (
     <div className="volume-bars-3d">
-      <Canvas camera={{ position: [0, 1.5, 5.6], fov: 42 }} gl={{ antialias: true, alpha: true }} dpr={[1, 1.5]}>
+      <Canvas camera={{ position: [0, 1.5, 5.6], fov: 42 }} gl={{ antialias: false, alpha: true }} dpr={1}>
         <CanvasErrorBoundary>
           <VolumeBarsScene reducedMotion={reducedMotion} />
         </CanvasErrorBoundary>
@@ -622,7 +620,7 @@ function EnvironmentScene({ theme }: { theme: ThemeMode }) {
   const rings = useRef<THREE.Group>(null);
   const { performanceTier, reducedMotion, replayProgress, systemStatus, anomalyLens } = useLivingOS();
   const points = useMemo(() => {
-    const count = performanceTier === "high" ? 760 : performanceTier === "balanced" ? 420 : 180;
+    const count = performanceTier === "high" ? 320 : performanceTier === "balanced" ? 160 : 60;
     const data = new Float32Array(count * 3);
     for (let i = 0; i < count; i += 1) {
       const r = 5 + Math.random() * 14;
@@ -688,7 +686,7 @@ function EnvironmentScene({ theme }: { theme: ThemeMode }) {
         <group ref={rings} position={[2.6, 0.3, -2]}>
           {[0, 1, 2, 3].map((i) => (
             <mesh key={i} rotation={[Math.PI / 2 + i * 0.26, i * 0.14, 0]}>
-              <torusGeometry args={[1.6 + i * 0.28, 0.01, 12, 180]} />
+              <torusGeometry args={[1.6 + i * 0.28, 0.01, 6, 48]} />
               <meshStandardMaterial color={i % 2 ? secondary : primary} emissive={primary} metalness={0.9} roughness={0.18} transparent opacity={0.44} />
             </mesh>
           ))}
@@ -756,12 +754,6 @@ function usePageAnimation(root: React.RefObject<HTMLDivElement | null>, deps: un
       );
     }
 
-    const move = (event: PointerEvent) => {
-      document.documentElement.style.setProperty("--mx", `${event.clientX}px`);
-      document.documentElement.style.setProperty("--my", `${event.clientY}px`);
-    };
-    window.addEventListener("pointermove", move);
-    return () => window.removeEventListener("pointermove", move);
   }, { scope: root, dependencies: deps, revertOnUpdate: true });
 }
 
@@ -807,7 +799,7 @@ function Sidebar({ activePage, setActivePage, open, setOpen }: { activePage: Pag
       </div>
 
       <nav className="main-nav" aria-label="Primary navigation">
-        {navItems.map((item, navIdx) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activePage === item.id;
           return (
@@ -820,7 +812,7 @@ function Sidebar({ activePage, setActivePage, open, setOpen }: { activePage: Pag
                 />
               )}
               <Icon size={18} />
-              <span><strong><TextEffect per="word" preset="fade" delay={0.05 + navIdx * 0.06} speedReveal={2.5} as="span">{item.label}</TextEffect></strong><small>{item.kicker}</small></span>
+              <span><strong>{item.label}</strong><small>{item.kicker}</small></span>
               <em>{item.stat}</em>
             </button>
           );
@@ -2274,15 +2266,21 @@ function Dashboard() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  // Merged: scene parallax + cursor spotlight — single RAF-throttled mousemove handler
+  // Merged: background gradient + scene parallax + cursor spotlight — single RAF-throttled handler
   useEffect(() => {
+    const shell = root.current;
     const scene = root.current?.querySelector<HTMLElement>(".scene-layer") ?? null;
     const workspace = root.current?.querySelector<HTMLElement>(".workspace") ?? null;
-    if (!scene && !workspace) return;
     let rafId: number | null = null;
     let clientX = 0, clientY = 0;
     const process = () => {
       rafId = null;
+      const pctX = ((clientX / window.innerWidth) * 100).toFixed(1);
+      const pctY = ((clientY / window.innerHeight) * 100).toFixed(1);
+      if (shell) {
+        shell.style.setProperty("--mx", `${pctX}%`);
+        shell.style.setProperty("--my", `${pctY}%`);
+      }
       if (scene) {
         const x = (clientX / window.innerWidth - 0.5) * 14;
         const y = (clientY / window.innerHeight - 0.5) * 9;
@@ -2338,7 +2336,7 @@ function Dashboard() {
     <main ref={root} className={`app-shell theme-${theme} density-${density} ${anomalyLens ? "anomaly-lens" : ""}`}>
       <div className="scene-layer">
         <CanvasErrorBoundary>
-          <Canvas camera={{ position: [0, 0, 7.5], fov: 44 }} dpr={performanceTier === "high" ? [1, 1.5] : performanceTier === "balanced" ? [1, 1.2] : 1} gl={{ antialias: performanceTier !== "minimal", alpha: true, powerPreference: "high-performance" }}>
+          <Canvas camera={{ position: [0, 0, 7.5], fov: 44 }} dpr={performanceTier === "high" ? [1, 1.2] : 1} gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}>
             <EnvironmentScene theme={theme} />
           </Canvas>
         </CanvasErrorBoundary>

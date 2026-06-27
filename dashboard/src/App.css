@@ -270,8 +270,14 @@ button:disabled { cursor: not-allowed; opacity: .52; }
     0 0 0 1px rgba(255,255,255,.07) inset,
     inset 0 1px 0 rgba(255,255,255,.22),
     inset 0 -1px 0 rgba(0,0,0,.2);
-  backdrop-filter: blur(32px) saturate(2);
-  -webkit-backdrop-filter: blur(32px) saturate(2);
+  /* reduced from blur(32px) — compositor cost scales with radius² */
+  backdrop-filter: blur(18px) saturate(1.8);
+  -webkit-backdrop-filter: blur(18px) saturate(1.8);
+}
+/* panels: lighter still — many visible at once on the grid */
+.panel {
+  backdrop-filter: blur(10px) saturate(1.5);
+  -webkit-backdrop-filter: blur(10px) saturate(1.5);
 }
 
 .theme-light .sidebar,
@@ -1381,6 +1387,7 @@ kbd {
   padding: 20px;
   border-radius: 30px;
   overflow: hidden;
+  will-change: opacity;
   transition: box-shadow .22s ease, border-color .22s ease;
 }
 
@@ -3368,14 +3375,13 @@ kbd {
   .ink-reveal, .ink-reveal.ink-active { animation: none !important; opacity: 0 !important; }
 }
 
-/* ── Feature 3: Depth-of-Field ── */
+/* ── Feature 3: Depth-of-Field (opacity-only — no filter repaint) ── */
 .panel {
-  filter: blur(var(--dof-blur, 0px));
   opacity: var(--dof-opacity, 1);
-  transition: filter 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .panel { filter: none !important; opacity: 1 !important; }
+  .panel { opacity: 1 !important; }
 }
 
 /* ── Feature 4: Force-Directed Segment Graph ── */
