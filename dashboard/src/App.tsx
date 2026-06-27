@@ -712,12 +712,12 @@ function usePageAnimation(root: React.RefObject<HTMLDivElement | null>, deps: un
     const dur = reduceMotion ? 0.001 : 0.72;
     gsap.defaults({ ease: "power3.out", duration: dur });
 
-    // Dramatic entrance: y + scale + blur collapse
+    // Dramatic entrance: y + scale collapse (no blur — avoids repaint)
     if (entranceTargets.length) {
       gsap.fromTo(
         entranceTargets,
-        { y: 32, opacity: 0, scale: 0.96, filter: "blur(6px)" },
-        { y: 0, opacity: 1, scale: 1, filter: "blur(0px)", stagger: 0.04 },
+        { y: 24, opacity: 0, scale: 0.97 },
+        { y: 0, opacity: 1, scale: 1, stagger: 0.035 },
       );
     }
 
@@ -730,16 +730,16 @@ function usePageAnimation(root: React.RefObject<HTMLDivElement | null>, deps: un
       );
     }
 
-    // Scroll reveals: deeper y + scale + blur
+    // Scroll reveals: fire well before visible — never blank on scroll
     if (revealTargets.length) {
       ScrollTrigger.batch(revealTargets, {
-        start: "top 88%",
+        start: "top 150%",
         once: true,
         onEnter: (items) =>
           gsap.fromTo(
             items,
-            { y: 48, opacity: 0, scale: 0.94, filter: "blur(8px)" },
-            { y: 0, opacity: 1, scale: 1, filter: "blur(0px)", stagger: 0.065, overwrite: true },
+            { y: 28, opacity: 0, scale: 0.96 },
+            { y: 0, opacity: 1, scale: 1, stagger: 0.04, overwrite: true, duration: 0.6 },
           ),
       });
     }
@@ -749,8 +749,8 @@ function usePageAnimation(root: React.RefObject<HTMLDivElement | null>, deps: un
     if (kpiNumbers.length) {
       gsap.fromTo(
         kpiNumbers,
-        { opacity: 0, y: 12, scale: 0.88 },
-        { opacity: 1, y: 0, scale: 1, ease: "back.out(1.6)", stagger: 0.07, delay: 0.18, duration: 0.55 },
+        { opacity: 0, y: 8, scale: 0.9 },
+        { opacity: 1, y: 0, scale: 1, ease: "back.out(1.6)", stagger: 0.04, delay: 0.05, duration: 0.45 },
       );
     }
 
@@ -890,18 +890,18 @@ function HeroPanel({ page, onInsight, onRefine }: { page: NavItem; onInsight: ()
       >
         <motion.span variants={heroItemVariants} className="eyebrow">
           <Icon size={16} />{" "}
-          <TextEffect per="char" preset="blur" delay={0.15} speedReveal={2.2} speedSegment={1.4} as="span">{meta.eyebrow}</TextEffect>
+          <TextEffect per="char" preset="blur" delay={0.05} speedReveal={3.5} as="span">{meta.eyebrow}</TextEffect>
         </motion.span>
         <motion.h1 variants={heroItemVariants}>
-          <TextEffect per="word" preset="fade-in-blur" delay={0.25} speedReveal={1.8} speedSegment={1.2} as="span">{meta.title}</TextEffect>
+          <TextEffect per="word" preset="fade-in-blur" delay={0.1} speedReveal={2.5} speedSegment={1.5} as="span">{meta.title}</TextEffect>
         </motion.h1>
         {streamWords.length > 0 ? (
           <motion.p variants={heroItemVariants} className="insight-stream">
             {streamWords.map((w, i) => (
               <motion.span key={`${w}-${i}`} className="stream-word"
-                initial={{ opacity: 0, filter: 'blur(6px)', y: 6 }}
-                animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
-                transition={{ duration: 0.32, delay: i * 0.028, ease: 'easeOut' }}
+                initial={{ opacity: 0, y: 5, filter: 'blur(4px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.24, delay: i * 0.022, ease: 'easeOut' }}
               >{w}{' '}</motion.span>
             ))}
             {streaming && <span className="stream-cursor">▋</span>}
@@ -919,11 +919,7 @@ function HeroPanel({ page, onInsight, onRefine }: { page: NavItem; onInsight: ()
       <div className="hero-metrics">
         {[meta.primary, meta.secondary, meta.tertiary].map((metric, index) => (
           <div key={metric}>
-            <small>
-              <TextEffect per="word" preset="fade" delay={0.4 + index * 0.12} speedReveal={2} as="span">
-                {["Primary signal", "Operational read", "Trend state"][index]}
-              </TextEffect>
-            </small>
+            <small><TextEffect per="word" preset="fade" delay={0.15 + index * 0.05} speedReveal={3.5} as="span">{["Primary signal", "Operational read", "Trend state"][index]}</TextEffect></small>
             <AnimatedValue value={metric} />
           </div>
         ))}
@@ -971,14 +967,14 @@ function KpiGrid({ items = kpis }: { items?: typeof kpis }) {
           layout
           className={`metric-card tone-${tone} ${anomalyLens && (tone === "danger" || index === 1) ? "anomaly-hit" : ""}`}
           style={{ "--replay": replayProgress / 100 } as CSSProperties}
-          initial={{ opacity: 0, y: 28, scale: 0.96 }}
+          initial={{ opacity: 0, y: 16, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: "spring", stiffness: 220, damping: 24, delay: index * 0.07 }}
+          transition={{ type: "spring", stiffness: 260, damping: 26, delay: index * 0.035 }}
           whileHover={{ y: -6, rotateX: 2, transition: { type: "spring", stiffness: 260, damping: 22, delay: 0 } }}
         >
           <div className="metric-top"><span><Icon size={18} /></span></div>
           <AnimatedValue value={value} />
-          <p><TextEffect per="word" preset="fade" delay={0.18 + index * 0.05} speedReveal={2} as="span">{label}</TextEffect></p>
+          <p><TextEffect per="word" preset="fade" delay={0.15 + index * 0.04} speedReveal={3.5} as="span">{label}</TextEffect></p>
           <TrendIndicator value={delta} />
         </motion.article>
       ))}
@@ -1058,15 +1054,15 @@ function Panel({
   return (
     <motion.section
       className={`panel ${className}`}
-      initial={{ opacity: 0, y: 32, scale: 0.97, filter: "blur(6px)" }}
-      whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{ type: "spring", stiffness: 160, damping: 22 }}
+      initial={{ opacity: 0, y: 18, scale: 0.97 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, margin: "0px 0px 600px 0px" }}
+      transition={{ type: "spring", stiffness: 240, damping: 26 }}
     >
       <div className="panel-heading">
         <div>
-          <span><TextEffect per="word" preset="fade" delay={0.05} speedReveal={2.5} as="span">{kicker}</TextEffect></span>
-          <h2><TextEffect per="word" preset="fade-in-blur" delay={0.12} speedReveal={2} speedSegment={1.1} as="span">{title}</TextEffect></h2>
+          <span><TextEffect per="word" preset="fade" delay={0.02} speedReveal={4.5} as="span">{kicker}</TextEffect></span>
+          <h2><TextEffect per="word" preset="fade-in-blur" delay={0.06} speedReveal={3.2} speedSegment={1.4} as="span">{title}</TextEffect></h2>
         </div>
         <div className="panel-actions">
           {storyEnabled ? (
@@ -1367,13 +1363,13 @@ function HorizontalBars({ labels = ["Electronics", "Home & Kitchen", "Apparel", 
     gsap.set(bars, { scaleX: 0, transformOrigin: "left center" });
     ScrollTrigger.create({
       trigger: root.current,
-      start: "top 88%",
+      start: "top 150%",
       onEnter: () => {
         gsap.to(bars, {
           scaleX: 1,
-          duration: 1.1,
+          duration: 0.7,
           ease: "power3.out",
-          stagger: 0.09,
+          stagger: 0.05,
         });
       },
       once: true,
@@ -1515,17 +1511,17 @@ function GaugeDial({ value }: { value: number }) {
 function ActivityFeed() {
   return (
     <InView
-      variants={{ hidden: { opacity: 0, y: 18, filter: "blur(6px)" }, visible: { opacity: 1, y: 0, filter: "blur(0px)" } }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      viewOptions={{ amount: 0.1 }}
+      variants={{ hidden: { opacity: 0, y: 14, filter: 'blur(5px)' }, visible: { opacity: 1, y: 0, filter: 'blur(0px)' } }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      viewOptions={{ amount: 0, margin: "200px" }}
       once
     >
       <div className="activity-feed">
         {activity.map(([title, body, time, tone], index) => (
-          <motion.article initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * .055 }} key={title} className={`activity-${tone}`}>
+          <motion.article initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * .03 }} key={title} className={`activity-${tone}`}>
             <span />
             <div>
-              <strong><TextEffect per="word" preset="fade" delay={index * 0.04} speedReveal={3} as="span">{title}</TextEffect></strong>
+              <strong><TextEffect per="word" preset="fade" delay={index * 0.03} speedReveal={4} as="span">{title}</TextEffect></strong>
               <p>{body}</p>
             </div>
             <em>{time}</em>
@@ -1550,19 +1546,19 @@ function SegmentCards() {
       {segments.map(([name, count, ltv, action, score], i) => (
         <motion.article
           key={name}
-          initial={{ opacity: 0, x: -20, filter: "blur(4px)" }}
-          whileInView={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ delay: i * 0.06, type: "spring", stiffness: 200, damping: 22 }}
+          initial={{ opacity: 0, x: -16 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: "0px 0px 300px 0px" }}
+          transition={{ delay: i * 0.04, type: "spring", stiffness: 240, damping: 24 }}
         >
-          <div><strong><TextEffect per="word" preset="fade" delay={i * 0.05} speedReveal={2.5} as="span">{name}</TextEffect></strong><span>{count} customers</span></div>
+          <div><strong><TextEffect per="word" preset="fade" delay={i * 0.04} speedReveal={3.5} as="span">{name}</TextEffect></strong><span>{count} customers</span></div>
           <em>{ltv} CLV</em>
           <p>{action}</p>
           <motion.b
             initial={{ width: "0%" }}
             whileInView={{ width: `${score}%` }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.3 + i * 0.06, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+            viewport={{ once: true, margin: "0px 0px 300px 0px" }}
+            transition={{ delay: 0.1 + i * 0.04, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
           />
         </motion.article>
       ))}
@@ -1633,12 +1629,12 @@ function ExecPulseCard({ title, value, label, tone, icon: Icon, delta }: {
       <span className="exec-card-glow" aria-hidden="true" />
       <motion.span className="exec-card-glare" aria-hidden="true" style={{ background: glareStyle }} />
       <div className="exec-card-header">
-        <span className="exec-card-title"><TextEffect per="word" preset="fade" delay={0.08} speedReveal={2.5} as="span">{title}</TextEffect></span>
+        <span className="exec-card-title"><TextEffect per="word" preset="fade" delay={0.04} speedReveal={4.5} as="span">{title}</TextEffect></span>
         <span className="exec-card-icon"><Icon size={20} /></span>
       </div>
       <AnimatedValue className="exec-card-value" value={value} />
       <div className="exec-card-footer">
-        <span className="exec-card-label"><TextEffect per="word" preset="fade" delay={0.15} speedReveal={2.5} as="span">{label}</TextEffect></span>
+        <span className="exec-card-label"><TextEffect per="word" preset="fade" delay={0.1} speedReveal={4.5} as="span">{label}</TextEffect></span>
         <span className={`exec-card-delta ${isNeg ? "neg" : "pos"}`}>
           <DeltaIcon size={13} strokeWidth={2.8} />{delta}
         </span>

@@ -1387,7 +1387,8 @@ kbd {
   padding: 20px;
   border-radius: 30px;
   overflow: hidden;
-  will-change: opacity;
+  will-change: opacity, transform;
+  contain: layout style;
   transition: box-shadow .22s ease, border-color .22s ease;
 }
 
@@ -3045,7 +3046,7 @@ kbd {
 
 /* HeatMap GSAP: ensure cells start invisible before JS picks them up */
 .heat-grid span {
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity;
 }
 
 /* ─── Panel ambient glow ─────────────────────────────────────────── */

@@ -16,11 +16,11 @@ interface InViewProps {
 export function InView({
   children,
   variants = {
-    hidden: { opacity: 0, y: 24, filter: 'blur(8px)' },
+    hidden: { opacity: 0, y: 20, filter: 'blur(6px)' },
     visible: { opacity: 1, y: 0, filter: 'blur(0px)' },
   },
-  transition = { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-  viewOptions = { amount: 0.25 },
+  transition = { duration: 0.44, ease: [0.22, 1, 0.36, 1] },
+  viewOptions = { amount: 0, margin: '200px' },
   once = true,
   as = 'div',
   className,
