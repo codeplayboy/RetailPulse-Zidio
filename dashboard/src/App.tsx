@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from "@react-three/fiber";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, useReducedMotion, useScroll } from "framer-motion";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -189,6 +189,387 @@ const heat = [72, 46, 88, 61, 94, 53, 78, 67, 91, 59, 83, 49, 76, 97, 63, 84];
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
 const barMonths = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
+// ── FEATURE 1: MAGNETIC CURSOR ───────────────────────────────────────────────
+function useMagneticCursor(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+    const MAG_RADIUS = 88;
+    const STRENGTH = 0.42;
+    const handle = (e: MouseEvent) => {
+      (document.querySelectorAll<HTMLElement>('.magnetic') as NodeListOf<HTMLElement>).forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = e.clientX - cx;
+        const dy = e.clientY - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MAG_RADIUS) {
+          const pull = (1 - dist / MAG_RADIUS) * STRENGTH;
+          el.style.setProperty('--mag-x', `${(dx * pull).toFixed(2)}px`);
+          el.style.setProperty('--mag-y', `${(dy * pull).toFixed(2)}px`);
+        } else {
+          el.style.setProperty('--mag-x', '0px');
+          el.style.setProperty('--mag-y', '0px');
+        }
+      });
+    };
+    window.addEventListener('mousemove', handle, { passive: true });
+    return () => window.removeEventListener('mousemove', handle);
+  }, [enabled]);
+}
+
+// ── FEATURE 3: DEPTH-OF-FIELD FOCUS PLANE ────────────────────────────────────
+function useDepthOfField(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+    const handle = () => {
+      const panels = document.querySelectorAll<HTMLElement>('.panel');
+      const vc = window.innerHeight / 2;
+      panels.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        const ec = rect.top + rect.height / 2;
+        const dist = Math.abs(ec - vc);
+        const max = window.innerHeight * 0.65;
+        const blur = Math.min(2.8, (dist / max) * 2.8);
+        const opacity = Math.max(0.62, 1 - (dist / max) * 0.38);
+        el.style.setProperty('--dof-blur', `${blur.toFixed(2)}px`);
+        el.style.setProperty('--dof-opacity', `${opacity.toFixed(3)}`);
+      });
+    };
+    window.addEventListener('scroll', handle, { passive: true });
+    handle();
+    return () => window.removeEventListener('scroll', handle);
+  }, [enabled]);
+}
+
+// ── FEATURE 2: INK/WATERCOLOR PAGE REVEAL ────────────────────────────────────
+function InkReveal({ trigger }: { trigger: number }) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const prevRef = useRef(trigger);
+  useEffect(() => {
+    if (trigger === prevRef.current) return;
+    prevRef.current = trigger;
+    const el = overlayRef.current;
+    if (!el) return;
+    el.classList.remove('ink-active');
+    void el.offsetWidth;
+    el.classList.add('ink-active');
+    const t = window.setTimeout(() => el.classList.remove('ink-active'), 920);
+    return () => window.clearTimeout(t);
+  }, [trigger]);
+  return createPortal(
+    <>
+      <svg width="0" height="0" aria-hidden="true" style={{ position: 'fixed', top: 0, left: 0, pointerEvents: 'none' }}>
+        <defs>
+          <filter id="ink-warp" x="-20%" y="-20%" width="140%" height="140%">
+            <feTurbulence type="turbulence" baseFrequency="0.022 0.016" numOctaves="4" seed="7" result="turbOut" />
+            <feDisplacementMap in="SourceGraphic" in2="turbOut" scale="90" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+      <div ref={overlayRef} className="ink-reveal" aria-hidden="true" />
+    </>,
+    document.body
+  );
+}
+
+// ── FEATURE 4: FORCE-DIRECTED SEGMENT GRAPH ──────────────────────────────────
+function ForceGraph() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { reducedMotion } = useLivingOS();
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const W = canvas.offsetWidth || 300;
+    const H = canvas.offsetHeight || 200;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(dpr, dpr);
+
+    const nodes = [
+      { label: 'Champions', r: 22, x: W * .5,  y: H * .33, vx: 0, vy: 0, color: '#fbbf24' },
+      { label: 'Loyal',     r: 18, x: W * .28, y: H * .5,  vx: 0, vy: 0, color: '#a855f7' },
+      { label: 'Potential', r: 16, x: W * .72, y: H * .5,  vx: 0, vy: 0, color: '#22d3ee' },
+      { label: 'At Risk',   r: 14, x: W * .2,  y: H * .68, vx: 0, vy: 0, color: '#f472b6' },
+      { label: 'New',       r: 12, x: W * .5,  y: H * .72, vx: 0, vy: 0, color: '#6366f1' },
+      { label: 'Lost',      r: 10, x: W * .82, y: H * .68, vx: 0, vy: 0, color: '#ef4444' },
+    ];
+    const links = [[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,5]];
+    const K_REPEL = 4400;
+    const K_SPRING = 0.038;
+    const REST = 118;
+    const DAMP = 0.87;
+    const CX = W * .5;
+    const CY = H * .5;
+    const K_CENTER = 0.009;
+    let raf: number;
+
+    const tick = () => {
+      for (let i = 0; i < nodes.length; i++) {
+        const a = nodes[i];
+        a.vx += (CX - a.x) * K_CENTER;
+        a.vy += (CY - a.y) * K_CENTER;
+        for (let j = i + 1; j < nodes.length; j++) {
+          const b = nodes[j];
+          const dx = a.x - b.x; const dy = a.y - b.y;
+          const d2 = dx * dx + dy * dy + 1;
+          const f = K_REPEL / d2;
+          a.vx += dx * f; a.vy += dy * f;
+          b.vx -= dx * f; b.vy -= dy * f;
+        }
+      }
+      for (const [ai, bi] of links) {
+        const a = nodes[ai]; const b = nodes[bi];
+        const dx = b.x - a.x; const dy = b.y - a.y;
+        const d = Math.sqrt(dx * dx + dy * dy) || 1;
+        const f = (d - REST) * K_SPRING;
+        a.vx += (dx / d) * f; a.vy += (dy / d) * f;
+        b.vx -= (dx / d) * f; b.vy -= (dy / d) * f;
+      }
+      for (const n of nodes) {
+        n.vx *= DAMP; n.vy *= DAMP;
+        n.x = Math.max(n.r + 4, Math.min(W - n.r - 4, n.x + (reducedMotion ? 0 : n.vx)));
+        n.y = Math.max(n.r + 4, Math.min(H - n.r - 4, n.y + (reducedMotion ? 0 : n.vy)));
+      }
+      ctx.clearRect(0, 0, W, H);
+      for (const [ai, bi] of links) {
+        const a = nodes[ai]; const b = nodes[bi];
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = 'rgba(168,85,247,0.22)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      for (const n of nodes) {
+        const g = ctx.createRadialGradient(n.x - n.r * .3, n.y - n.r * .3, 0, n.x, n.y, n.r * 1.7);
+        g.addColorStop(0, n.color + 'cc');
+        g.addColorStop(1, n.color + '22');
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fillStyle = g; ctx.fill();
+        ctx.strokeStyle = n.color + '77'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = `${Math.max(8, n.r * 0.52)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(n.label, n.x, n.y);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => cancelAnimationFrame(raf);
+  }, [reducedMotion]);
+  return <canvas ref={canvasRef} className="force-graph-canvas" aria-label="Customer segment force graph" />;
+}
+
+// ── FEATURE 5: VORONOI TERRITORY MAP ─────────────────────────────────────────
+function VoronoiCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { reducedMotion } = useLivingOS();
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const W = canvas.offsetWidth || 300;
+    const H = canvas.offsetHeight || 200;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(dpr, dpr);
+
+    const seeds = [
+      { x: W*.18, y: H*.25, dx: .22, dy: .14, color: '#a855f7' },
+      { x: W*.72, y: H*.2,  dx: -.18, dy: .19, color: '#22d3ee' },
+      { x: W*.5,  y: H*.54, dx: .12, dy: -.2, color: '#f472b6' },
+      { x: W*.14, y: H*.72, dx: .24, dy: -.11, color: '#6366f1' },
+      { x: W*.82, y: H*.65, dx: -.19, dy: -.17, color: '#fbbf24' },
+      { x: W*.55, y: H*.88, dx: .14, dy: .09, color: '#34d399' },
+    ];
+    let raf: number;
+    const tick = () => {
+      if (!reducedMotion) {
+        for (const s of seeds) {
+          s.x += s.dx; s.y += s.dy;
+          if (s.x < 0 || s.x > W) s.dx *= -1;
+          if (s.y < 0 || s.y > H) s.dy *= -1;
+        }
+      }
+      ctx.clearRect(0, 0, W, H);
+      const dim = Math.min(W, H);
+      for (const s of seeds) {
+        const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, dim * .58);
+        g.addColorStop(0, s.color + '55');
+        g.addColorStop(.45, s.color + '1a');
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+      for (let i = 0; i < seeds.length; i++) {
+        for (let j = i + 1; j < seeds.length; j++) {
+          const a = seeds[i]; const b = seeds[j];
+          const dx = b.x - a.x; const dy = b.y - a.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < dim * .72) {
+            const mx = (a.x + b.x) / 2; const my = (a.y + b.y) / 2;
+            const nx = -dy / d; const ny = dx / d;
+            const len = 55;
+            ctx.beginPath();
+            ctx.moveTo(mx - nx * len, my - ny * len);
+            ctx.lineTo(mx + nx * len, my + ny * len);
+            ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        }
+      }
+      for (const s of seeds) {
+        ctx.beginPath(); ctx.arc(s.x, s.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = s.color; ctx.fill();
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => cancelAnimationFrame(raf);
+  }, [reducedMotion]);
+  return <canvas ref={canvasRef} className="voronoi-canvas" aria-label="Customer territory map" />;
+}
+
+// ── FEATURE 10: CHURN NEURAL NET VISUALIZATION ───────────────────────────────
+function ChurnNeuralNet() {
+  const layers = [
+    ['Recency', 'Frequency', 'Monetary', 'Email', 'Support'],
+    ['H1', 'H2', 'H3', 'H4'],
+    ['H5', 'H6', 'H7'],
+    ['Stay', 'Churn'],
+  ];
+  const palette = ['#22d3ee', '#a855f7', '#f472b6', '#ef4444'];
+  const W = 340; const H = 200;
+  const layerXs = [32, 108, 210, 312];
+  const positions = layers.map((layer, li) => {
+    const gap = H / (layer.length + 1);
+    return layer.map((_, ni) => ({ x: layerXs[li], y: gap * (ni + 1) }));
+  });
+  const edges: Array<{ x1:number; y1:number; x2:number; y2:number; del:number }> = [];
+  for (let li = 0; li < layers.length - 1; li++) {
+    for (const a of positions[li]) {
+      for (const b of positions[li + 1]) {
+        edges.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, del: Math.random() * 1.8 });
+      }
+    }
+  }
+  return (
+    <svg className="churn-neural-net" viewBox={`0 0 ${W} ${H}`} aria-label="Churn prediction neural network visualization">
+      <defs>
+        {palette.map((c, i) => (
+          <radialGradient key={i} id={`cng${i}`} cx="38%" cy="38%" r="62%">
+            <stop offset="0%" stopColor={c} stopOpacity="0.88" />
+            <stop offset="100%" stopColor={c} stopOpacity="0.15" />
+          </radialGradient>
+        ))}
+      </defs>
+      {edges.map((e, i) => (
+        <line key={i} x1={e.x1} y1={e.y1} x2={e.x2} y2={e.y2}
+          stroke="rgba(168,85,247,0.16)" strokeWidth="0.75"
+          style={{ animation: `nn-pulse 2.6s ease-in-out ${e.del.toFixed(2)}s infinite` }}
+        />
+      ))}
+      {positions.map((layer, li) => layer.map((pos, ni) => (
+        <g key={`${li}-${ni}`}>
+          <circle cx={pos.x} cy={pos.y}
+            r={li === 0 ? 7.5 : li === layers.length - 1 ? 9 : 6.5}
+            fill={`url(#cng${li})`}
+            style={{ animation: `nn-glow 2.1s ease-in-out ${(li * 0.28 + ni * 0.17).toFixed(2)}s infinite alternate` }}
+          />
+          {li === 0 && <text x={pos.x - 12} y={pos.y + 3.5} fontSize="6.5" fill="rgba(255,255,255,0.55)" textAnchor="end">{layers[0][ni]}</text>}
+          {li === layers.length - 1 && <text x={pos.x + 12} y={pos.y + 3.5} fontSize="8" fill={ni === 1 ? '#ef4444' : '#34d399'} textAnchor="start" fontWeight="600">{layers[li][ni]}</text>}
+        </g>
+      )))}
+    </svg>
+  );
+}
+
+// ── FEATURE 12: MORPHING SVG BRAND ICON ──────────────────────────────────────
+function MorphingBrandIcon({ anomaly }: { anomaly: boolean }) {
+  return (
+    <svg viewBox="0 0 24 20" width="22" height="22" fill="none" aria-hidden="true">
+      <motion.polyline
+        points="0,18 4,14 8,18 12,10 16,18 20,8 24,18"
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        animate={{ opacity: anomaly ? 0 : 1 }} transition={{ duration: 0.38, ease: 'easeInOut' }}
+      />
+      <motion.polyline
+        points="0,18 3,4 6,18 9,1 12,18 15,3 18,18 21,2 24,18"
+        stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        animate={{ opacity: anomaly ? 1 : 0 }} transition={{ duration: 0.38, ease: 'easeInOut' }}
+      />
+    </svg>
+  );
+}
+
+// ── FEATURE 7: 3D VOLUME BARS ─────────────────────────────────────────────────
+function VolumeBarsScene({ reducedMotion }: { reducedMotion: boolean }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const heights = [58, 86, 64, 92, 74, 96, 69, 88, 78, 100, 82, 93];
+  const colors = ['#a855f7', '#6366f1', '#22d3ee', '#f472b6'];
+  useFrame((state) => {
+    if (groupRef.current && !reducedMotion) {
+      const t = state.clock.elapsedTime;
+      groupRef.current.rotation.y = Math.sin(t * 0.38) * 0.26;
+      groupRef.current.position.y = Math.sin(t * 0.55) * 0.09 - 0.45;
+    }
+  });
+  return (
+    <group ref={groupRef} position={[0, -0.45, 0]}>
+      {heights.map((h, i) => {
+        const sy = (h / 100) * 2.4;
+        const col = colors[i % colors.length];
+        return (
+          <mesh key={i} position={[(i - heights.length / 2) * 0.28, sy / 2, 0]}>
+            <boxGeometry args={[0.2, sy, 0.2]} />
+            <meshStandardMaterial color={col} emissive={col} emissiveIntensity={0.38} metalness={0.58} roughness={0.22} />
+          </mesh>
+        );
+      })}
+      <ambientLight intensity={0.5} />
+      <pointLight position={[3, 4, 3]} intensity={2.2} color="#a855f7" />
+      <pointLight position={[-3, 2, 2]} intensity={1.6} color="#22d3ee" />
+    </group>
+  );
+}
+
+function VolumeBars3D() {
+  const { reducedMotion, performanceTier } = useLivingOS();
+  if (performanceTier === 'minimal') return <RevenueBars />;
+  return (
+    <div className="volume-bars-3d">
+      <Canvas camera={{ position: [0, 1.5, 5.6], fov: 42 }} gl={{ antialias: true, alpha: true }} dpr={[1, 1.5]}>
+        <CanvasErrorBoundary>
+          <VolumeBarsScene reducedMotion={reducedMotion} />
+        </CanvasErrorBoundary>
+      </Canvas>
+    </div>
+  );
+}
+
+// ── FEATURE 14: FUZZY MATCH HIGHLIGHT ────────────────────────────────────────
+function fuzzyHighlight(text: string, query: string): ReactNode {
+  if (!query.trim()) return text;
+  const lower = text.toLowerCase();
+  const q = query.toLowerCase().trim();
+  const parts: ReactNode[] = [];
+  let last = 0; let qi = 0;
+  for (let i = 0; i < text.length && qi < q.length; i++) {
+    if (lower[i] === q[qi]) {
+      if (last < i) parts.push(text.slice(last, i));
+      parts.push(<mark key={i} className="cmd-match-mark" style={{ animationDelay: `${qi * 28}ms` }}>{text[i]}</mark>);
+      last = i + 1; qi++;
+    }
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return <>{parts}</>;
+}
+
 class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
@@ -204,7 +585,7 @@ class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError:
 function EnvironmentScene({ theme }: { theme: ThemeMode }) {
   const group = useRef<THREE.Group>(null);
   const rings = useRef<THREE.Group>(null);
-  const { performanceTier, reducedMotion, replayProgress, systemStatus } = useLivingOS();
+  const { performanceTier, reducedMotion, replayProgress, systemStatus, anomalyLens } = useLivingOS();
   const points = useMemo(() => {
     const count = performanceTier === "high" ? 760 : performanceTier === "balanced" ? 420 : 180;
     const data = new Float32Array(count * 3);
@@ -242,8 +623,8 @@ function EnvironmentScene({ theme }: { theme: ThemeMode }) {
     }
   });
 
-  const primary = systemStatus === "watch" ? "#fb7185" : theme === "dark" ? "#a855f7" : "#9333ea";
-  const secondary = theme === "dark" ? "#22d3ee" : "#0891b2";
+  const primary = anomalyLens ? "#f97316" : systemStatus === "watch" ? "#fb7185" : theme === "dark" ? "#a855f7" : "#9333ea";
+  const secondary = anomalyLens ? "#fbbf24" : theme === "dark" ? "#22d3ee" : "#0891b2";
 
   return (
     <>
@@ -376,14 +757,15 @@ function LiveClock() {
 }
 
 function Sidebar({ activePage, setActivePage, open, setOpen }: { activePage: PageId; setActivePage: (id: PageId) => void; open: boolean; setOpen: (open: boolean) => void }) {
+  const { anomalyLens } = useLivingOS();
   return (
     <>
       {open && <div className="sidebar-overlay" onClick={() => setOpen(false)} />}
       <aside className={open ? "sidebar open" : "sidebar"}>
       <div className="brand">
-        <div className="brand-icon"><BarChart3 size={22} /></div>
+        <div className="brand-icon"><MorphingBrandIcon anomaly={anomalyLens} /></div>
         <div>
-          <strong>RetailPulse</strong>
+          <strong className="brand-shimmer">RetailPulse</strong>
           <span>Intelligence OS</span>
         </div>
         <button className="sidebar-close" onClick={() => setOpen(false)} aria-label="Close navigation"><X size={18} /></button>
@@ -392,8 +774,16 @@ function Sidebar({ activePage, setActivePage, open, setOpen }: { activePage: Pag
       <nav className="main-nav" aria-label="Primary navigation">
         {navItems.map((item) => {
           const Icon = item.icon;
+          const isActive = activePage === item.id;
           return (
-            <button key={item.id} className={activePage === item.id ? "active" : ""} onClick={() => { setActivePage(item.id); setOpen(false); }}>
+            <button key={item.id} className={`magnetic${isActive ? " active" : ""}`} onClick={() => { setActivePage(item.id); setOpen(false); }}>
+              {isActive && (
+                <motion.span
+                  className="nav-pill"
+                  layoutId="nav-pill"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
               <Icon size={18} />
               <span><strong>{item.label}</strong><small>{item.kicker}</small></span>
               <em>{item.stat}</em>
@@ -426,7 +816,7 @@ function Topbar({ page, setNavOpen, setCommandOpen, setAlertsOpen }: { page: Nav
         <span>{page.label}</span>
       </div>
       <LiveClock />
-      <ShellButton label="Open alerts" onClick={() => setAlertsOpen(true)}><Bell size={18} /><i /></ShellButton>
+      <ShellButton label="Open alerts" onClick={() => setAlertsOpen(true)}><Bell size={18} /><motion.i className="bell-badge" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 620, damping: 18, delay: 1.4 }} /></ShellButton>
       <div className="user-chip"><span>R</span><strong>Rashad</strong></div>
     </header>
   );
@@ -435,18 +825,63 @@ function Topbar({ page, setNavOpen, setCommandOpen, setAlertsOpen }: { page: Nav
 function HeroPanel({ page, onInsight, onRefine }: { page: NavItem; onInsight: () => void; onRefine: () => void }) {
   const meta = pageMeta[page.id];
   const Icon = page.icon;
+  const [streamWords, setStreamWords] = useState<string[]>([]);
+  const [streaming, setStreaming] = useState(false);
+  const streamRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress: heroScroll } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const sweepParallaxY = useTransform(heroScroll, [0, 1], [0, -48]);
+
+  const handleInsight = useCallback(() => {
+    onInsight();
+    const insight = `AI analysis complete — ${meta.summary.slice(0, 120)} Key opportunity detected: high-value segment growth accelerating 24% QoQ.`;
+    const words = insight.split(' ');
+    setStreamWords([]);
+    setStreaming(true);
+    let i = 0;
+    streamRef.current = window.setInterval(() => {
+      i++;
+      setStreamWords(words.slice(0, i));
+      if (i >= words.length) {
+        window.clearInterval(streamRef.current!);
+        setStreaming(false);
+      }
+    }, 62);
+  }, [onInsight, meta.summary]);
+
+  useEffect(() => () => { if (streamRef.current) window.clearInterval(streamRef.current); }, []);
+
   return (
-    <section className="hero-panel animate-in">
-      <span className="sweep-shine" aria-hidden="true" />
-      <div className="hero-copy">
-        <span className="eyebrow"><Icon size={16} /> {meta.eyebrow}</span>
-        <h1>{meta.title}</h1>
-        <p>{meta.summary}</p>
-        <div className="hero-actions">
-          <button type="button" className="primary-action" onClick={onInsight}><Sparkles size={17} /> Generate insight</button>
+    <section ref={heroRef} className="hero-panel animate-in">
+      <motion.span className="sweep-shine" style={{ y: sweepParallaxY }} aria-hidden="true" />
+      <motion.div
+        key={page.id}
+        className="hero-copy"
+        variants={heroContainerVariants}
+        initial="initial"
+        animate="animate"
+      >
+        <motion.span variants={heroItemVariants} className="eyebrow"><Icon size={16} /> {meta.eyebrow}</motion.span>
+        <motion.h1 variants={heroItemVariants}>{meta.title}</motion.h1>
+        {streamWords.length > 0 ? (
+          <motion.p variants={heroItemVariants} className="insight-stream">
+            {streamWords.map((w, i) => (
+              <motion.span key={`${w}-${i}`} className="stream-word"
+                initial={{ opacity: 0, filter: 'blur(6px)', y: 6 }}
+                animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                transition={{ duration: 0.32, delay: i * 0.028, ease: 'easeOut' }}
+              >{w}{' '}</motion.span>
+            ))}
+            {streaming && <span className="stream-cursor">▋</span>}
+          </motion.p>
+        ) : (
+          <motion.p variants={heroItemVariants}>{meta.summary}</motion.p>
+        )}
+        <motion.div variants={heroItemVariants} className="hero-actions">
+          <button type="button" className="primary-action magnetic" onClick={handleInsight}><Sparkles size={17} /> Generate insight</button>
           <button type="button" className="secondary-action" onClick={onRefine}><Filter size={17} /> Refine view</button>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
       <div className="hero-metrics">
         {[meta.primary, meta.secondary, meta.tertiary].map((metric, index) => (
           <div key={metric}>
@@ -460,12 +895,20 @@ function HeroPanel({ page, onInsight, onRefine }: { page: NavItem; onInsight: ()
 }
 
 function FilterDock() {
+  const [expanded, setExpanded] = useState(false);
   return (
     <section className="filter-dock animate-in">
       <Control icon={CalendarDays} title="Date range" value="Dec 2025 - Jun 2026" />
       <Control icon={Layers3} title="Category" value="All categories" />
       <Control icon={RadioTower} title="Region" value="All regions" />
-      <button className="secondary-action"><SlidersHorizontal size={16} /> Advanced filters</button>
+      <button className="secondary-action" onClick={() => setExpanded(e => !e)}><SlidersHorizontal size={16} /> Advanced filters</button>
+      <div className={`filter-advanced${expanded ? " is-open" : ""}`}>
+        <div className="filter-advanced-inner">
+          <Control title="Revenue threshold" value="$0 – $50K" />
+          <Control title="Churn risk" value="All" />
+          <Control title="Segment" value="All segments" />
+        </div>
+      </div>
     </section>
   );
 }
@@ -487,6 +930,7 @@ function KpiGrid({ items = kpis }: { items?: typeof kpis }) {
       {items.map(({ label, value, delta, icon: Icon, tone }, index) => (
         <motion.article
           key={label}
+          layout
           className={`metric-card tone-${tone} ${anomalyLens && (tone === "danger" || index === 1) ? "anomaly-hit" : ""}`}
           style={{ "--replay": replayProgress / 100 } as CSSProperties}
           initial={{ opacity: 0, y: 28, scale: 0.96 }}
@@ -525,7 +969,16 @@ function TrendIndicator({ value }: { value: string }) {
 
   return (
     <div ref={root} className={`trend-indicator trend-${direction}`} aria-label={`${direction} trend ${value}`}>
-      <span className="trend-icon"><TrendIcon size={17} strokeWidth={2.6} /></span>
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={direction}
+          className="trend-icon"
+          initial={{ opacity: 0, y: -8, scale: 0.8 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.7 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25, duration: 0.25 }}
+        ><TrendIcon size={17} strokeWidth={2.6} /></motion.span>
+      </AnimatePresence>
       <strong className="trend-value">{value}</strong>
       <small>{direction === "positive" ? "Increase" : direction === "negative" ? "Decrease" : "Current status"}</small>
     </div>
@@ -564,7 +1017,13 @@ function Panel({
   const [storyOpen, setStoryOpen] = useState(false);
   const storySpec = getPanelStorySpec(title);
   return (
-    <section className={`panel reveal ${className}`}>
+    <motion.section
+      className={`panel ${className}`}
+      initial={{ opacity: 0, y: 32, scale: 0.97, filter: "blur(6px)" }}
+      whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ type: "spring", stiffness: 160, damping: 22 }}
+    >
       <div className="panel-heading">
         <div><span>{kicker}</span><h2>{title}</h2></div>
         <div className="panel-actions">
@@ -580,6 +1039,8 @@ function Panel({
         <AnimatePresence>
           {focused ? (
           <motion.div className="focus-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="letterbox-bar letterbox-top" initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} exit={{ scaleY: 0 }} transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }} />
+            <motion.div className="letterbox-bar letterbox-bottom" initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} exit={{ scaleY: 0 }} transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }} />
             <motion.section className="focus-surface" initial={{ scale: .96, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: .98, y: 12 }}>
               <div className="panel-heading">
                 <div><span>{kicker}</span><h2>{title}</h2></div>
@@ -610,7 +1071,7 @@ function Panel({
         </AnimatePresence>,
         document.querySelector(".app-shell") || document.body
       )}
-    </section>
+    </motion.section>
   );
 }
 
@@ -671,7 +1132,7 @@ function RevenueLine({ compact = false }: { compact?: boolean }) {
         <path d={`${path} L538,166 L24,166 Z`} fill={`url(#${areaGradient})`} />
         <path className="compare-line" d={comparePath} />
         <path className="draw-line" style={{ stroke: `url(#${lineGradient})` }} d={path} />
-        {[24, 136, 278, 426, 538].map((x, i) => <circle key={x} cx={x} cy={[150, 88, 72, 42, 24][i]} r="4.8" className="line-dot" style={{ stroke: `url(#${lineGradient})` }} />)}
+        {[24, 136, 278, 426, 538].map((x, i) => <circle key={x} cx={x} cy={[150, 88, 72, 42, 24][i]} r="4.8" className="line-dot bio-pulse" style={{ stroke: `url(#${lineGradient})`, animationDelay: `${i * 0.38}s` }} />)}
       </svg>
     </div>
   );
@@ -681,6 +1142,7 @@ function RevenueBars() {
   const plotRef = useRef<HTMLDivElement>(null);
   const { replayProgress, reducedMotion } = useLivingOS();
   const factor = .65 + replayProgress * .0035;
+  const [tipIndex, setTipIndex] = useState<number | null>(null);
 
   // GSAP cluster hover: lift + glow on mouseenter, revert on mouseleave
   useGSAP(() => {
@@ -713,9 +1175,22 @@ function RevenueBars() {
       <div className="bar-axis">{["120k", "80k", "40k"].map((t) => <span key={t}>{t}</span>)}</div>
       <div className="bar-plot" ref={plotRef}>
         {bars.map((bar, i) => (
-          <span key={i} className="bar-cluster">
+          <span
+            key={i}
+            className="bar-cluster"
+            style={{ position: "relative" } as CSSProperties}
+            onMouseEnter={() => setTipIndex(i)}
+            onMouseLeave={() => setTipIndex(null)}
+          >
             <i style={{ "--h": `${bar * factor}%`, "--delay": `${i * 42}ms` } as CSSProperties} />
             <b style={{ "--h": `${profitBars[i] * factor}%`, "--delay": `${i * 42 + 60}ms` } as CSSProperties} />
+            {tipIndex === i && (
+              <span className="chart-tip" role="tooltip">
+                <strong>{barMonths[i]}</strong>
+                <span>Rev: {bars[i]}%</span>
+                <span>Profit: {profitBars[i]}%</span>
+              </span>
+            )}
           </span>
         ))}
       </div>
@@ -736,6 +1211,7 @@ function Donut({ labels = ["Electronics", "Home", "Apparel", "Beauty", "Grocerie
   // SVG is ALWAYS rendered — the overlay visually covers it during the animation.
   const [playerDone, setPlayerDone] = useState(false);
   const markDone = useCallback(() => setPlayerDone(true), []);
+  const [hoveredSeg, setHoveredSeg] = useState<number | null>(null);
 
   // Unique key per mount — forces Remotion Player to start from frame 0 on every
   // page visit, even if React tries to reuse an existing Player instance.
@@ -768,10 +1244,11 @@ function Donut({ labels = ["Electronics", "Home", "Apparel", "Beauty", "Grocerie
           {values.map((value, index) => {
             const dashOffset = -offset;
             offset += value;
+            const isHovered = hoveredSeg === index;
             return (
               <circle
                 key={`${labels[index]}-${value}`}
-                className="donut-segment"
+                className={`donut-segment${isHovered ? " donut-segment-hovered" : ""}`}
                 cx="60"
                 cy="60"
                 r="44"
@@ -779,6 +1256,17 @@ function Donut({ labels = ["Electronics", "Home", "Apparel", "Beauty", "Grocerie
                 stroke={segmentColors[index]}
                 strokeDasharray={`${value} ${100 - value}`}
                 strokeDashoffset={dashOffset}
+                strokeWidth={isHovered ? 14 : 12}
+                style={{
+                  transformBox: "fill-box",
+                  transformOrigin: "center",
+                  transform: isHovered ? "scale(1.07)" : "scale(1)",
+                  filter: isHovered ? `drop-shadow(0 0 8px ${segmentColors[index]})` : "none",
+                  transition: "transform 0.22s cubic-bezier(0.22,1,0.36,1), stroke-width 0.22s ease-out, filter 0.22s ease-out",
+                  cursor: "pointer",
+                } as CSSProperties}
+                onMouseEnter={() => setHoveredSeg(index)}
+                onMouseLeave={() => setHoveredSeg(null)}
               />
             );
           })}
@@ -910,7 +1398,7 @@ function HeatMap() {
     <div ref={root} className={anomalyLens ? "heat-grid anomaly-active" : "heat-grid"}>
       {heat.map((v, i) => (
         <span
-          className={anomalyLens && v > 88 ? "anomaly-cell" : ""}
+          className={`${anomalyLens && v > 88 ? "anomaly-cell" : ""}${v > 85 ? " heat-pulse" : ""}`.trim()}
           key={i}
           style={{ "--v": v } as CSSProperties}
         >
@@ -1000,13 +1488,24 @@ function LuxuryTable({ rows, wide = false }: { rows: string[][]; wide?: boolean 
 function SegmentCards() {
   return (
     <div className="segment-list">
-      {segments.map(([name, count, ltv, action, score]) => (
-        <article key={name}>
+      {segments.map(([name, count, ltv, action, score], i) => (
+        <motion.article
+          key={name}
+          initial={{ opacity: 0, x: -20, filter: "blur(4px)" }}
+          whileInView={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ delay: i * 0.06, type: "spring", stiffness: 200, damping: 22 }}
+        >
           <div><strong>{name}</strong><span>{count} customers</span></div>
           <em>{ltv} CLV</em>
           <p>{action}</p>
-          <b style={{ width: `${score}%` }} />
-        </article>
+          <motion.b
+            initial={{ width: "0%" }}
+            whileInView={{ width: `${score}%` }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 + i * 0.06, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          />
+        </motion.article>
       ))}
     </div>
   );
@@ -1039,13 +1538,41 @@ function ExecPulseCard({ title, value, label, tone, icon: Icon, delta }: {
 }) {
   const isNeg = delta.startsWith("-");
   const DeltaIcon = isNeg ? TrendingDown : TrendingUp;
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const rotateX = useTransform(mouseY, [-0.5, 0.5], [8, -8]);
+  const rotateY = useTransform(mouseX, [-0.5, 0.5], [-8, 8]);
+  const cardScale = useSpring(1, { stiffness: 300, damping: 22 });
+  const cardY = useSpring(0, { stiffness: 300, damping: 22 });
+  const glareStyle = useTransform(
+    [mouseX, mouseY],
+    ([x, y]) => `radial-gradient(circle at ${((x as number) + 0.5) * 100}% ${((y as number) + 0.5) * 100}%, rgba(255,255,255,0.18) 0%, transparent 60%)`
+  );
+
+  const handleTiltMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+    mouseX.set((e.clientX - left) / width - 0.5);
+    mouseY.set((e.clientY - top) / height - 0.5);
+    cardScale.set(1.025);
+    cardY.set(-8);
+  }, [mouseX, mouseY, cardScale, cardY]);
+
+  const handleTiltLeave = useCallback(() => {
+    mouseX.set(0);
+    mouseY.set(0);
+    cardScale.set(1);
+    cardY.set(0);
+  }, [mouseX, mouseY, cardScale, cardY]);
+
   return (
     <motion.article
       className={`exec-card exec-card-${tone}`}
-      whileHover={{ y: -8, scale: 1.025 }}
-      transition={{ type: "spring", stiffness: 300, damping: 22 }}
+      style={{ perspective: 800, rotateX, rotateY, scale: cardScale, y: cardY }}
+      onMouseMove={handleTiltMove}
+      onMouseLeave={handleTiltLeave}
     >
       <span className="exec-card-glow" aria-hidden="true" />
+      <motion.span className="exec-card-glare" aria-hidden="true" style={{ background: glareStyle }} />
       <div className="exec-card-header">
         <span className="exec-card-title">{title}</span>
         <span className="exec-card-icon"><Icon size={20} /></span>
@@ -1129,6 +1656,7 @@ function OverviewPage() {
         <Panel title="Live Activity Feed" kicker="Model, inventory, and segment stream" icon={RadioTower}><ActivityFeed /></Panel>
         <Panel title="Monthly Performance" kicker="Revenue and profit by month" icon={BarChart3}><StackedBars /></Panel>
         <Panel title="Top Selling Products" kicker="Ranked by total revenue" icon={Crown}><LuxuryTable rows={[["Blender", "$1.42M", "+19%"], ["Perfume", "$1.18M", "+14%"], ["Sneakers", "$982K", "+11%"], ["Smartwatch", "$814K", "+9%"]]} /></Panel>
+        <Panel title="3D Volume Analysis" kicker="Interactive three-dimensional volume bars" icon={BarChart3}><VolumeBars3D /></Panel>
       </section>
     </>
   );
@@ -1149,7 +1677,12 @@ function SegmentationPage() {
       ]} />
       <section className="tab-strip animate-in" aria-label="Customer intelligence views">
         {tabs.map((tab) => (
-          <button type="button" aria-pressed={activeTab === tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)} key={tab}>{tab}</button>
+          <button type="button" aria-pressed={activeTab === tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)} key={tab}>
+            {activeTab === tab && (
+              <motion.span className="tab-pill" layoutId="seg-tab-pill" transition={{ type: "spring", stiffness: 380, damping: 30 }} />
+            )}
+            {tab}
+          </button>
         ))}
         <span className="tab-status">Viewing {activeTab}</span>
       </section>
@@ -1158,6 +1691,8 @@ function SegmentationPage() {
         <Panel title="Customer Lifetime Value" kicker="Average CLV by segment" icon={Gem}><HorizontalBars /></Panel>
         <Panel title="KMeans Cluster Scatter" kicker="Recency vs monetary, sized by frequency" icon={Brain}><ScatterPlot /></Panel>
         <Panel title="RFM Score Heatmap" kicker="Recency, frequency, monetary heat" icon={Eye}><HeatMap /></Panel>
+        <Panel title="Segment Force Graph" kicker="Live physics — customer topology" icon={RadioTower}><ForceGraph /></Panel>
+        <Panel title="Territory Map" kicker="Voronoi — geographic density zones" icon={Layers3}><VoronoiCanvas /></Panel>
         <Panel className="wide-panel" title="Customer Insights & Playbook" kicker="Recommended action per segment" icon={Sparkles}><SegmentCards /></Panel>
       </section>
     </>
@@ -1179,6 +1714,7 @@ function ChurnPage() {
         <Panel title="Risk Analysis" kicker="Customers by risk band" icon={Gauge}><RiskMatrix /></Panel>
         <Panel title="Feature Importance" kicker="What drives churn" icon={Brain}><HorizontalBars labels={["Recency", "Satisfaction", "Frequency", "Email opens", "Support tickets"]} /></Panel>
         <Panel title="Churn Timeline" kicker="Monthly churn events over last 6 months" icon={CalendarDays}><StackedBars /></Panel>
+        <Panel title="Churn Neural Network" kicker="Animated prediction model visualization" icon={Brain}><ChurnNeuralNet /></Panel>
         <Panel className="wide-panel" title="Retention Recommendation Engine" kicker="Top at-risk customers + suggested action" icon={Zap}><LuxuryTable rows={[["C00421", "High", "91.2%", "$18.2K", "Offer Discount + Personal Outreach"], ["C01884", "High", "87.4%", "$12.7K", "VIP Concierge Call"], ["C00941", "Medium", "66.8%", "$8.9K", "Loyalty Program Enrollment"], ["C02016", "Medium", "61.5%", "$6.3K", "Personalized Campaign"]]} wide /></Panel>
       </section>
     </>
@@ -1297,6 +1833,7 @@ function MediaStudioPage() {
   const [narration, setNarration] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
+  const [renderDone, setRenderDone] = useState(false);
 
   useEffect(() => {
     if (!rendering) return;
@@ -1304,6 +1841,7 @@ function MediaStudioPage() {
       setRenderProgress((value) => {
         if (value >= 100) {
           setRendering(false);
+          setRenderDone(true);
           return 100;
         }
         return Math.min(100, value + 8);
@@ -1350,11 +1888,28 @@ function MediaStudioPage() {
 
           <button
             type="button"
-            className="primary-action media-render"
-            onClick={() => { setRenderProgress(0); setRendering(true); }}
+            className={`primary-action media-render${renderDone ? " render-success" : ""}`}
+            onClick={() => { setRenderProgress(0); setRenderDone(false); setRendering(true); }}
           >
-            <CloudDownload size={17} />
-            {rendering ? `Rendering ${renderProgress}%` : "Generate Executive Video"}
+            {renderDone ? (
+              <>
+                <svg className="success-check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={17} height={17}>
+                  <motion.path
+                    d="M5 13l4 4L19 7"
+                    strokeDasharray={26}
+                    initial={{ strokeDashoffset: 26 }}
+                    animate={{ strokeDashoffset: 0 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
+                  />
+                </svg>
+                Rendered!
+              </>
+            ) : (
+              <>
+                <CloudDownload size={17} />
+                {rendering ? `Rendering ${renderProgress}%` : "Generate Executive Video"}
+              </>
+            )}
           </button>
         </div>
 
@@ -1401,12 +1956,35 @@ function MediaStudioPage() {
   );
 }
 
+function AccordionPanel({ title, kicker, icon: Icon, children, defaultOpen = false }: {
+  title: string; kicker: string; icon: typeof Activity; children: ReactNode; defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className={`t-acc-item${open ? " is-open" : ""}`}>
+      <button type="button" className="t-acc-trigger" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Icon size={17} className="acc-icon" />
+        <div className="acc-title-group">
+          <strong>{title}</strong>
+          <span>{kicker}</span>
+        </div>
+        <svg className="acc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      <div className="t-acc-panel" aria-hidden={!open}>
+        <div className="t-acc-panel-inner">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsPage({ theme, setTheme }: { theme: ThemeMode; setTheme: (theme: ThemeMode) => void }) {
   const isLight = theme === "light";
 
   return (
     <section className="settings-grid animate-in">
-      <Panel title="Appearance" kicker="Theme" icon={isLight ? Sun : Moon} storyEnabled={false}>
+      <AccordionPanel title="Appearance" kicker="Theme" icon={isLight ? Sun : Moon} defaultOpen>
         <div className="theme-toggle-row">
           <div>
             <strong>{isLight ? "Light theme" : "Dark theme"}</strong>
@@ -1426,28 +2004,28 @@ function SettingsPage({ theme, setTheme }: { theme: ThemeMode; setTheme: (theme:
           </button>
         </div>
         <p className="settings-copy">Use the switch to move between the black-and-red reference theme and the metallic silver-and-gold workspace.</p>
-      </Panel>
-      <Panel title="Model Settings" kicker="Configuration" icon={Brain} storyEnabled={false}>
+      </AccordionPanel>
+      <AccordionPanel title="Model Settings" kicker="Configuration" icon={Brain}>
         <Control title="KMeans clusters" value="5 clusters" />
         <Control title="Inventory service level" value="95.0%" />
         <Control title="Churn model" value="Balanced logistic" />
-      </Panel>
-      <Panel title="Forecast Settings" kicker="Configuration" icon={LineChart} storyEnabled={false}>
+      </AccordionPanel>
+      <AccordionPanel title="Forecast Settings" kicker="Configuration" icon={LineChart}>
         <Control title="Default horizon" value="30 days" />
         <Control title="MAPE target" value="12%" />
         <Control title="Engine" value="Prophet + fallback" />
-      </Panel>
-      <Panel title="User Management" kicker="Access control" icon={Lock} storyEnabled={false}>
+      </AccordionPanel>
+      <AccordionPanel title="User Management" kicker="Access control" icon={Lock}>
         <LuxuryTable rows={[["Rashad", "Platform Integration", "Owner"], ["Kaviya", "Data Engineering", "Editor"], ["Rohinee", "Customer Intelligence", "Editor"], ["Sachin", "Forecasting", "Analyst"]]} />
-      </Panel>
-      <Panel title="Notification Settings" kicker="Configuration" icon={Bell} storyEnabled={false}>
+      </AccordionPanel>
+      <AccordionPanel title="Notification Settings" kicker="Configuration" icon={Bell}>
         <Control title="Email alerts" value="Enabled" />
         <Control title="Alert topics" value="Critical stock, churn spikes" />
         <Control title="Digest recipient" value="ops@retailpulse.io" />
-      </Panel>
-      <Panel title="Security & Audit" kicker="Governance" icon={ShieldCheck} storyEnabled={false}>
+      </AccordionPanel>
+      <AccordionPanel title="Security & Audit" kicker="Governance" icon={ShieldCheck}>
         <ActivityFeed />
-      </Panel>
+      </AccordionPanel>
     </section>
   );
 }
@@ -1455,6 +2033,7 @@ function SettingsPage({ theme, setTheme }: { theme: ThemeMode; setTheme: (theme:
 function CommandModal({ open, onClose, setActivePage }: { open: boolean; onClose: () => void; setActivePage: (id: PageId) => void }) {
   const [query, setQuery] = useState("");
   const { anomalyLens, setAnomalyLens, setReplaying, setReplayProgress, setActiveCategory, setBriefingOpen } = useLivingOS();
+  const shouldReduceMotion = useReducedMotion();
   const results = navItems.filter((item) => `${item.label} ${item.kicker}`.toLowerCase().includes(query.trim().toLowerCase()));
   const normalized = query.trim().toLowerCase();
   const actions = [
@@ -1473,7 +2052,7 @@ function CommandModal({ open, onClose, setActivePage }: { open: boolean; onClose
     <AnimatePresence>
       {open ? (
         <motion.div className="overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-          <motion.section className="command-modal" role="dialog" aria-modal="true" aria-labelledby="command-title" initial={{ y: 24, scale: 0.97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, scale: 0.98 }}>
+          <motion.section className="command-modal" role="dialog" aria-modal="true" aria-labelledby="command-title" initial={{ y: shouldReduceMotion ? 0 : -20, scale: shouldReduceMotion ? 1 : 0.9, opacity: 0, filter: shouldReduceMotion ? "none" : "blur(10px)" }} animate={{ y: 0, scale: 1, opacity: 1, filter: "none" }} exit={{ y: shouldReduceMotion ? 0 : -10, scale: shouldReduceMotion ? 1 : 0.96, opacity: 0, filter: shouldReduceMotion ? "none" : "blur(6px)" }} transition={{ type: "spring", stiffness: 360, damping: 28 }}>
             <div className="modal-head"><Command size={18} /><strong id="command-title">Command search</strong><button type="button" aria-label="Close command search" onClick={onClose}><X size={18} /></button></div>
             <label className="modal-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} autoFocus placeholder="Search dashboard modules, customers, reports..." /></label>
             <div className="command-results">
@@ -1484,7 +2063,7 @@ function CommandModal({ open, onClose, setActivePage }: { open: boolean; onClose
               ))}
               {results.map((item) => {
                 const Icon = item.icon;
-                return <button key={item.id} className="command-result" aria-label={`Open ${item.label}`} onClick={() => { setActivePage(item.id); onClose(); }}><Icon size={17} /><span>{item.label}</span><em>{item.kicker}</em></button>;
+                return <button key={item.id} className="command-result" aria-label={`Open ${item.label}`} onClick={() => { setActivePage(item.id); onClose(); }}><Icon size={17} /><span>{fuzzyHighlight(item.label, query)}</span><em>{item.kicker}</em></button>;
               })}
               {results.length === 0 && actions.length === 0 ? <p className="empty-result">No matching dashboard module or command.</p> : null}
             </div>
@@ -1496,12 +2075,13 @@ function CommandModal({ open, onClose, setActivePage }: { open: boolean; onClose
 }
 
 function AlertsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const shouldReduceMotion = useReducedMotion();
   return (
     <AnimatePresence>
       {open ? (
         <>
           <motion.div className="drawer-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
-          <motion.aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="alerts-title" initial={{ x: 420 }} animate={{ x: 0 }} exit={{ x: 420 }} transition={{ type: "spring", stiffness: 300, damping: 30 }}>
+          <motion.aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="alerts-title" initial={{ x: shouldReduceMotion ? 0 : 420 }} animate={{ x: 0 }} exit={{ x: shouldReduceMotion ? 0 : 420 }} transition={{ type: "spring", stiffness: 300, damping: 30 }}>
             <div className="drawer-head"><strong id="alerts-title">Live notifications</strong><button type="button" aria-label="Close notifications" onClick={onClose}><X size={18} /></button></div>
             <ActivityFeed />
           </motion.aside>
@@ -1512,10 +2092,11 @@ function AlertsDrawer({ open, onClose }: { open: boolean; onClose: () => void })
 }
 
 function Toast({ message }: { message: string }) {
+  const shouldReduceMotion = useReducedMotion();
   return (
     <AnimatePresence>
       {message ? (
-        <motion.div className="toast" role="status" aria-live="polite" initial={{ opacity: 0, y: 18, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12 }}>
+        <motion.div className="toast" role="status" aria-live="polite" initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 18, scale: shouldReduceMotion ? 1 : .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: shouldReduceMotion ? 0 : 12 }}>
           <Sparkles size={17} />
           <span>{message}</span>
         </motion.div>
@@ -1523,6 +2104,16 @@ function Toast({ message }: { message: string }) {
     </AnimatePresence>
   );
 }
+
+// Hero panel text stagger variants (transitions-dev 18-texts-reveal pattern)
+const heroContainerVariants = {
+  initial: {},
+  animate: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+};
+const heroItemVariants = {
+  initial: { opacity: 0, y: 18, filter: "blur(4px)" },
+  animate: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] as const } },
+};
 
 // Direction-aware page slide: matches transitions-dev page side-by-side token values.
 // Forward (+1) slides in from right, backward (-1) slides in from left.
@@ -1555,6 +2146,7 @@ function Dashboard() {
   const root = useRef<HTMLDivElement>(null);
   const { density, anomalyLens, performanceTier } = useLivingOS();
   const [activePage, setActivePage] = useState<PageId>("overview");
+  const [pageChangeCounter, setPageChangeCounter] = useState(0);
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const savedTheme = window.localStorage.getItem("retailpulse-theme");
     return savedTheme === "light" ? "light" : "dark";
@@ -1620,6 +2212,35 @@ function Dashboard() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
+  // CSS Houdini paint worklet registration
+  useEffect(() => {
+    if ('paintWorklet' in CSS) {
+      (CSS as unknown as { paintWorklet: { addModule: (url: string) => void } }).paintWorklet.addModule('/noise-bg.js');
+    }
+  }, []);
+
+  // Cursor spotlight on workspace via CSS vars --cx / --cy
+  useEffect(() => {
+    const workspace = root.current?.querySelector<HTMLElement>(".workspace");
+    if (!workspace) return;
+    const handleMove = (e: MouseEvent) => {
+      workspace.style.setProperty("--cx", `${e.clientX}px`);
+      workspace.style.setProperty("--cy", `${e.clientY}px`);
+    };
+    window.addEventListener("mousemove", handleMove, { passive: true });
+    return () => window.removeEventListener("mousemove", handleMove);
+  }, []);
+
+  // Feature 1: Magnetic cursor
+  useMagneticCursor(performanceTier !== 'minimal');
+  // Feature 3: Depth-of-field
+  useDepthOfField(performanceTier !== 'minimal');
+
+  const handleSetActivePage = useCallback((id: PageId) => {
+    setActivePage(id);
+    setPageChangeCounter((c) => c + 1);
+  }, []);
+
   usePageAnimation(root, [activePage, theme, loading]);
 
   const renderPage = () => {
@@ -1642,34 +2263,63 @@ function Dashboard() {
           </Canvas>
         </CanvasErrorBoundary>
       </div>
-      <Sidebar activePage={activePage} setActivePage={setActivePage} open={navOpen} setOpen={setNavOpen} />
+      <InkReveal trigger={pageChangeCounter} />
+      <Sidebar activePage={activePage} setActivePage={handleSetActivePage} open={navOpen} setOpen={setNavOpen} />
       <section className="workspace">
         <Topbar page={active} setNavOpen={setNavOpen} setCommandOpen={setCommandOpen} setAlertsOpen={setAlertsOpen} />
-        {loading ? <SkeletonDashboard /> : (
-          <>
-            <HeroPanel
-              page={active}
-              onInsight={() => setToast(`${active.label} insight generated from the latest model snapshot.`)}
-              onRefine={() => setCommandOpen(true)}
-            />
-            <OperatingDock />
-            <AnimatePresence mode="wait" custom={directionRef.current}>
-              <motion.div
-                className="page-content"
-                key={activePage}
-                custom={directionRef.current}
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-              >
-                {renderPage()}
-              </motion.div>
-            </AnimatePresence>
-          </>
-        )}
+        <AnimatePresence mode="wait">
+          {loading ? (
+            <motion.div
+              key="skeleton"
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.25 } }}
+            >
+              <SkeletonDashboard />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="content"
+              initial={{ opacity: 0, filter: "blur(4px)" }}
+              animate={{ opacity: 1, filter: "blur(0px)", transition: { duration: 0.3, delay: 0.05 } }}
+            >
+              <HeroPanel
+                page={active}
+                onInsight={() => setToast(`${active.label} insight generated from the latest model snapshot.`)}
+                onRefine={() => setCommandOpen(true)}
+              />
+              <OperatingDock />
+              <AnimatePresence mode="wait" custom={directionRef.current}>
+                <motion.div
+                  className="page-content"
+                  key={activePage}
+                  custom={directionRef.current}
+                  variants={pageVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.12}
+                  onDragEnd={(_e, info) => {
+                    const pageIds = navItems.map((n) => n.id);
+                    const currentIndex = pageIds.indexOf(activePage);
+                    if (info.velocity.x < -400 && currentIndex < pageIds.length - 1) {
+                      directionRef.current = 1;
+                      handleSetActivePage(pageIds[currentIndex + 1]);
+                    } else if (info.velocity.x > 400 && currentIndex > 0) {
+                      directionRef.current = -1;
+                      handleSetActivePage(pageIds[currentIndex - 1]);
+                    }
+                  }}
+                >
+                  {renderPage()}
+                </motion.div>
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
-      <CommandModal open={commandOpen} onClose={() => setCommandOpen(false)} setActivePage={setActivePage} />
+      <CommandModal open={commandOpen} onClose={() => setCommandOpen(false)} setActivePage={handleSetActivePage} />
       <AlertsDrawer open={alertsOpen} onClose={() => setAlertsOpen(false)} />
       <ExecutiveBriefing />
       <Toast message={toast} />

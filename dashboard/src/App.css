@@ -3100,6 +3100,199 @@ kbd {
   transform-origin: left center;
 }
 
+/* ────────────────────────────────────────────────
+   NAV SLIDING PILL
+──────────────────────────────────────────────── */
+.main-nav button { position: relative; }
+
+.nav-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(168,85,247,.12);
+  border: 1px solid rgba(168,85,247,.35);
+  z-index: 0;
+  box-shadow: 0 0 16px rgba(168,85,247,.18);
+  pointer-events: none;
+}
+
+/* ────────────────────────────────────────────────
+   HEATMAP CELL PULSE
+──────────────────────────────────────────────── */
+@keyframes heat-glow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%       { box-shadow: 0 0 12px 3px rgba(251,191,36,.55); }
+}
+
+.heat-grid span.heat-pulse {
+  animation: heat-glow 2s ease-in-out infinite;
+}
+
+/* ────────────────────────────────────────────────
+   THEME TOGGLE ICON SWAP
+──────────────────────────────────────────────── */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 1px solid rgba(168,85,247,.3);
+  background: rgba(168,85,247,.1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-toggle .toggle-moon {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+  transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
+}
+
+.theme-toggle .toggle-sun {
+  opacity: 0;
+  transform: scale(0.7) rotate(-45deg);
+  transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
+  position: absolute;
+}
+
+.theme-toggle.is-light .toggle-moon {
+  opacity: 0;
+  transform: scale(0.7) rotate(45deg);
+}
+
+.theme-toggle.is-light .toggle-sun {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+  position: relative;
+}
+
+/* ────────────────────────────────────────────────
+   ACCORDION (SETTINGS)
+──────────────────────────────────────────────── */
+.t-acc-item {
+  border-bottom: 1px solid rgba(168,85,247,.15);
+}
+
+.t-acc-trigger {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  width: 100%;
+  padding: .9rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+  border-radius: 12px;
+  transition: background 0.18s ease;
+}
+
+.t-acc-trigger:hover {
+  background: rgba(168,85,247,.08);
+}
+
+.acc-title-group { flex: 1; }
+.acc-title-group strong { display: block; font-size: .88rem; font-weight: 700; }
+.acc-title-group span { font-size: .76rem; opacity: .65; }
+
+.acc-chevron {
+  flex-shrink: 0;
+  transition: transform .3s cubic-bezier(0.22, 1, 0.36, 1);
+  vector-effect: non-scaling-stroke;
+}
+
+.t-acc-item.is-open .acc-chevron {
+  transform: scaleY(-1);
+}
+
+.t-acc-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .35s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+
+.t-acc-item.is-open .t-acc-panel {
+  grid-template-rows: 1fr;
+}
+
+.t-acc-panel-inner {
+  overflow: hidden;
+  padding: 0 1rem 1rem;
+}
+
+/* ────────────────────────────────────────────────
+   SUCCESS CHECK (RENDER BUTTON)
+──────────────────────────────────────────────── */
+.media-render.render-success {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  border-color: rgba(34,197,94,.4) !important;
+  box-shadow: 0 0 20px rgba(34,197,94,.35) !important;
+}
+
+.success-check-icon {
+  flex-shrink: 0;
+}
+
+.check-path {
+  stroke-dasharray: 28;
+  stroke-dashoffset: 28;
+  animation: check-draw .5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes check-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* ────────────────────────────────────────────────
+   CHART TOOLTIP
+──────────────────────────────────────────────── */
+.bar-cluster {
+  position: relative;
+}
+
+.chart-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.92);
+  transform-origin: bottom center;
+  opacity: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  background: rgba(15, 10, 30, 0.92);
+  border: 1px solid rgba(168,85,247,.3);
+  border-radius: 10px;
+  white-space: nowrap;
+  font-size: .72rem;
+  color: var(--text);
+  pointer-events: none;
+  z-index: 20;
+  box-shadow: 0 4px 24px rgba(0,0,0,.4);
+  animation: tip-in .18s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.chart-tip strong {
+  font-size: .78rem;
+  color: rgba(168,85,247,1);
+}
+
+@keyframes tip-in {
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+/* ────────────────────────────────────────────────
+   DONUT SEGMENT HOVER
+──────────────────────────────────────────────── */
+.donut-segment {
+  cursor: pointer;
+}
+
 /* ─── Reduced motion overrides ───────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .panel::before,
@@ -3112,4 +3305,379 @@ kbd {
   .scene-layer {
     transition: none;
   }
+  .heat-grid span.heat-pulse {
+    animation: none;
+  }
+  .check-path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .chart-tip {
+    animation: none;
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  .donut-segment {
+    transition: none !important;
+  }
+  .acc-chevron, .t-acc-panel {
+    transition: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   NEW FEATURES — All 14 ultra-impressive animations
+═══════════════════════════════════════════════════════ */
+
+/* ── Feature 1: Magnetic Cursor ── */
+.magnetic {
+  transform: translate(var(--mag-x, 0px), var(--mag-y, 0px));
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .magnetic { transform: none !important; transition: none !important; }
+}
+
+/* ── Feature 2: Ink / Watercolor Page Reveal ── */
+.ink-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 55% at 50% 44%,
+    rgba(168,85,247,0.72) 0%,
+    rgba(34,211,238,0.54) 38%,
+    rgba(244,114,182,0.44) 65%,
+    transparent 100%);
+  filter: url(#ink-warp);
+  opacity: 0;
+  transform-origin: center;
+  transform: scale(0.92);
+}
+.ink-reveal.ink-active {
+  animation: ink-sweep 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes ink-sweep {
+  0%   { opacity: 0.88; transform: scale(0.88); }
+  35%  { opacity: 0.68; transform: scale(1.06); }
+  70%  { opacity: 0.22; transform: scale(1.14); }
+  100% { opacity: 0;    transform: scale(1.22); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ink-reveal, .ink-reveal.ink-active { animation: none !important; opacity: 0 !important; }
+}
+
+/* ── Feature 3: Depth-of-Field ── */
+.panel {
+  filter: blur(var(--dof-blur, 0px));
+  opacity: var(--dof-opacity, 1);
+  transition: filter 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel { filter: none !important; opacity: 1 !important; }
+}
+
+/* ── Feature 4: Force-Directed Segment Graph ── */
+.force-graph-canvas {
+  width: 100%;
+  height: 260px;
+  display: block;
+  border-radius: 8px;
+  background: rgba(14, 12, 42, 0.38);
+}
+
+/* ── Feature 5: Voronoi Territory Map ── */
+.voronoi-canvas {
+  width: 100%;
+  height: 220px;
+  display: block;
+  border-radius: 8px;
+  background: rgba(14, 12, 42, 0.28);
+}
+
+/* ── Feature 6: Bioluminescent Chart Pulse ── */
+@keyframes bio-pulse {
+  0%   { filter: drop-shadow(0 0 4px rgba(168,85,247,0.6)); r: 4.8px; }
+  45%  { filter: drop-shadow(0 0 18px rgba(34,211,238,0.95)); r: 7px; }
+  100% { filter: drop-shadow(0 0 4px rgba(168,85,247,0.6)); r: 4.8px; }
+}
+.line-dot.bio-pulse {
+  animation: point-pop 0.55s both, bio-pulse 2.8s ease-in-out 0.6s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .line-dot.bio-pulse { animation: none !important; }
+}
+
+/* ── Feature 7: 3D Volume Bars ── */
+.volume-bars-3d {
+  width: 100%;
+  height: 240px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(14, 12, 42, 0.28);
+}
+
+/* ── Feature 8: CSS Houdini Paint Worklet ── */
+@supports (background: paint(noise-bg)) {
+  .houdini-bg {
+    --noise-seed: 42;
+    --noise-alpha: 0.055;
+    --noise-color1: #a855f7;
+    --noise-color2: #22d3ee;
+    background: paint(noise-bg);
+  }
+  .panel, .metric-card, .kpi-grid-item {
+    --noise-seed: 17;
+    --noise-alpha: 0.032;
+    --noise-color1: #a855f7;
+    --noise-color2: #22d3ee;
+    background-image: paint(noise-bg);
+    background-size: cover;
+  }
+}
+
+/* ── Feature 9: Typed AI Insight / Blur-word Streaming ── */
+.insight-stream {
+  line-height: 1.62;
+  min-height: 2.4em;
+}
+.stream-word {
+  display: inline;
+}
+.stream-cursor {
+  display: inline-block;
+  width: 0.55em;
+  animation: cursor-blink 0.72s ease-in-out infinite;
+  color: var(--chart-a);
+  vertical-align: baseline;
+}
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stream-word { animation: none !important; opacity: 1 !important; filter: none !important; }
+  .stream-cursor { animation: none !important; }
+}
+
+/* ── Feature 10: Churn Neural Net SVG ── */
+.churn-neural-net {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  display: block;
+}
+@keyframes nn-pulse {
+  0%, 100% { stroke-opacity: 0.14; }
+  50%       { stroke-opacity: 0.72; }
+}
+@keyframes nn-glow {
+  from { opacity: 0.55; }
+  to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .churn-neural-net line,
+  .churn-neural-net circle { animation: none !important; }
+}
+
+/* ── Feature 11: Cinematic Letterbox ── */
+.letterbox-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 52px;
+  background: #000;
+  z-index: 201;
+  transform-origin: top center;
+}
+.letterbox-top {
+  top: 0;
+  transform-origin: top center;
+}
+.letterbox-bottom {
+  bottom: 0;
+  transform-origin: bottom center;
+}
+
+/* ── Feature 12: Morphing Brand Icon ── */
+.brand-icon svg {
+  display: block;
+  color: var(--chart-a);
+}
+
+/* ── Feature 13: Real-time Grid Reflow ── already in Framer Motion layout ── */
+
+/* ── Feature 14: Command Palette Fuzzy Match Highlight ── */
+.cmd-match-mark {
+  background: rgba(251, 191, 36, 0.3);
+  color: #fbbf24;
+  border-radius: 2px;
+  font-weight: 700;
+  padding: 0 1px;
+  animation: mark-pop 0.22s cubic-bezier(0.34, 1.36, 0.64, 1) both;
+}
+@keyframes mark-pop {
+  from { background: rgba(251, 191, 36, 0.62); transform: scale(1.18); }
+  to   { background: rgba(251, 191, 36, 0.3);  transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmd-match-mark { animation: none !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   NEW ANIMATION SYSTEM — Framer Motion v12 + transitions.dev upgrades
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Brand shimmer on "RetailPulse" sidebar text ── */
+@keyframes brand-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.brand-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--chart-a) 0%,
+    var(--chart-b) 30%,
+    #fff          50%,
+    var(--chart-b) 70%,
+    var(--chart-a) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: brand-shimmer 3.6s linear infinite;
+  display: inline-block;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-shimmer { animation: none; background: none; -webkit-text-fill-color: inherit; color: inherit; }
+}
+
+/* ── Bell badge notification dot ── */
+.bell-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--chart-c, #f472b6);
+  box-shadow: 0 0 0 2px var(--bg-base, #0a0a12);
+  pointer-events: none;
+}
+
+/* ── FilterDock advanced accordion ── */
+.filter-advanced {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  width: 100%;
+}
+.filter-advanced.is-open {
+  grid-template-rows: 1fr;
+}
+.filter-advanced-inner {
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0 0;
+  overflow: hidden;
+}
+
+/* ── Tab pill for SegmentationPage tab strip ── */
+.tab-strip button {
+  position: relative;
+}
+.tab-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255,255,255,0.1);
+  z-index: 0;
+  pointer-events: none;
+}
+.tab-strip button > span:not(.tab-pill) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── ExecPulseCard cursor glare overlay ── */
+.exec-card-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 2;
+}
+.exec-card:hover .exec-card-glare {
+  opacity: 1;
+}
+
+/* ── Anomaly shake keyframe for .anomaly-hit KPI cards ── */
+@keyframes anomaly-shake {
+  0%,100% { transform: translate(0, 0) rotate(0deg); }
+  15%      { transform: translate(-3px, 1px) rotate(-0.8deg); }
+  30%      { transform: translate(3px, -1px) rotate(0.8deg); }
+  45%      { transform: translate(-2px, 1px) rotate(-0.4deg); }
+  60%      { transform: translate(2px, -1px) rotate(0.4deg); }
+  75%      { transform: translate(-1px, 0px) rotate(-0.2deg); }
+}
+.anomaly-hit {
+  animation: anomaly-shake 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anomaly-hit { animation: none; }
+}
+
+/* ── Workspace cursor spotlight via --cx / --cy ── */
+.workspace {
+  --cx: 50%;
+  --cy: 50%;
+}
+.workspace::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    600px circle at var(--cx) var(--cy),
+    rgba(139, 92, 246, 0.06) 0%,
+    transparent 70%
+  );
+  z-index: 0;
+  transition: background 0.05s linear;
+}
+
+/* ── Topbar button tooltips ── */
+.shell-button {
+  position: relative;
+}
+.shell-button::after {
+  content: attr(aria-label);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.88);
+  background: rgba(20, 20, 35, 0.92);
+  color: rgba(255,255,255,0.9);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: 5px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.shell-button:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
 }
