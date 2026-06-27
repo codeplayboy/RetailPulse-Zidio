@@ -199,13 +199,21 @@ function useMagneticCursor(enabled: boolean) {
     if (!enabled) return;
     const MAG_RADIUS = 88;
     const STRENGTH = 0.42;
-    const handle = (e: MouseEvent) => {
-      (document.querySelectorAll<HTMLElement>('.magnetic') as NodeListOf<HTMLElement>).forEach((el) => {
+    let rafId: number | null = null;
+    let lastX = 0, lastY = 0;
+    let els: HTMLElement[] = Array.from(document.querySelectorAll<HTMLElement>('.magnetic'));
+    const obs = new MutationObserver(() => {
+      els = Array.from(document.querySelectorAll<HTMLElement>('.magnetic'));
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    const process = () => {
+      rafId = null;
+      for (const el of els) {
         const rect = el.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
-        const dx = e.clientX - cx;
-        const dy = e.clientY - cy;
+        const dx = lastX - cx;
+        const dy = lastY - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < MAG_RADIUS) {
           const pull = (1 - dist / MAG_RADIUS) * STRENGTH;
@@ -215,10 +223,18 @@ function useMagneticCursor(enabled: boolean) {
           el.style.setProperty('--mag-x', '0px');
           el.style.setProperty('--mag-y', '0px');
         }
-      });
+      }
+    };
+    const handle = (e: MouseEvent) => {
+      lastX = e.clientX; lastY = e.clientY;
+      if (rafId === null) rafId = requestAnimationFrame(process);
     };
     window.addEventListener('mousemove', handle, { passive: true });
-    return () => window.removeEventListener('mousemove', handle);
+    return () => {
+      window.removeEventListener('mousemove', handle);
+      obs.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [enabled]);
 }
 
@@ -226,23 +242,34 @@ function useMagneticCursor(enabled: boolean) {
 function useDepthOfField(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
-    const handle = () => {
-      const panels = document.querySelectorAll<HTMLElement>('.panel');
+    let rafId: number | null = null;
+    let panels: HTMLElement[] = Array.from(document.querySelectorAll<HTMLElement>('.panel'));
+    const obs = new MutationObserver(() => {
+      panels = Array.from(document.querySelectorAll<HTMLElement>('.panel'));
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+    const process = () => {
+      rafId = null;
       const vc = window.innerHeight / 2;
-      panels.forEach((el) => {
+      const max = window.innerHeight * 0.65;
+      for (const el of panels) {
         const rect = el.getBoundingClientRect();
         const ec = rect.top + rect.height / 2;
         const dist = Math.abs(ec - vc);
-        const max = window.innerHeight * 0.65;
         const blur = Math.min(2.8, (dist / max) * 2.8);
         const opacity = Math.max(0.62, 1 - (dist / max) * 0.38);
         el.style.setProperty('--dof-blur', `${blur.toFixed(2)}px`);
         el.style.setProperty('--dof-opacity', `${opacity.toFixed(3)}`);
-      });
+      }
     };
+    const handle = () => { if (rafId === null) rafId = requestAnimationFrame(process); };
     window.addEventListener('scroll', handle, { passive: true });
-    handle();
-    return () => window.removeEventListener('scroll', handle);
+    process();
+    return () => {
+      window.removeEventListener('scroll', handle);
+      obs.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [enabled]);
 }
 
@@ -359,7 +386,7 @@ function ForceGraph() {
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(n.label, n.x, n.y);
       }
-      raf = requestAnimationFrame(tick);
+      if (!reducedMotion) raf = requestAnimationFrame(tick);
     };
     tick();
     return () => cancelAnimationFrame(raf);
@@ -431,7 +458,7 @@ function VoronoiCanvas() {
         ctx.beginPath(); ctx.arc(s.x, s.y, 4, 0, Math.PI * 2);
         ctx.fillStyle = s.color; ctx.fill();
       }
-      raf = requestAnimationFrame(tick);
+      if (!reducedMotion) raf = requestAnimationFrame(tick);
     };
     tick();
     return () => cancelAnimationFrame(raf);
@@ -454,14 +481,18 @@ function ChurnNeuralNet() {
     const gap = H / (layer.length + 1);
     return layer.map((_, ni) => ({ x: layerXs[li], y: gap * (ni + 1) }));
   });
-  const edges: Array<{ x1:number; y1:number; x2:number; y2:number; del:number }> = [];
-  for (let li = 0; li < layers.length - 1; li++) {
-    for (const a of positions[li]) {
-      for (const b of positions[li + 1]) {
-        edges.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, del: Math.random() * 1.8 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const edges = useMemo((): Array<{ x1:number; y1:number; x2:number; y2:number; del:number }> => {
+    const result: Array<{ x1:number; y1:number; x2:number; y2:number; del:number }> = [];
+    for (let li = 0; li < layers.length - 1; li++) {
+      for (const a of positions[li]) {
+        for (const b of positions[li + 1]) {
+          result.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, del: Math.random() * 1.8 });
+        }
       }
     }
-  }
+    return result;
+  }, []); // layers/positions derive from in-function constants — stable across renders
   return (
     <svg className="churn-neural-net" viewBox={`0 0 ${W} ${H}`} aria-label="Churn prediction neural network visualization">
       <defs>
@@ -753,7 +784,7 @@ function LiveClock() {
   useEffect(() => {
     const timer = window.setInterval(
       () => setTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })),
-      30000
+      60000
     );
     return () => window.clearInterval(timer);
   }, []);
@@ -1031,6 +1062,7 @@ function Panel({
   const [focused, setFocused] = useState(false);
   const [storyOpen, setStoryOpen] = useState(false);
   const storySpec = getPanelStorySpec(title);
+  const portalRoot = useMemo(() => document.querySelector(".app-shell") || document.body, []);
   return (
     <motion.section
       className={`panel ${className}`}
@@ -1069,7 +1101,7 @@ function Panel({
           </motion.div>
           ) : null}
         </AnimatePresence>,
-        document.querySelector(".app-shell") || document.body
+        portalRoot
       )}
       {createPortal(
         <AnimatePresence>
@@ -1087,7 +1119,7 @@ function Panel({
             </motion.div>
           ) : null}
         </AnimatePresence>,
-        document.querySelector(".app-shell") || document.body
+        portalRoot
       )}
     </motion.section>
   );
@@ -1403,6 +1435,7 @@ function HeatMap() {
   // Live scale from replayProgress — no entrance re-trigger
   useGSAP(() => {
     if (!root.current) return;
+    if (reducedMotion) return;
     const cells = root.current.querySelectorAll("span");
     gsap.to(cells, {
       scale: 0.7 + replayProgress * 0.003,
@@ -1438,14 +1471,20 @@ function ScatterPlot() {
 
 function GaugeDial({ value }: { value: number }) {
   const root = useRef<HTMLDivElement>(null);
+  const entranceDoneRef = useRef(false);
   const { replayProgress, reducedMotion } = useLivingOS();
   const displayedValue = Math.round(value * (.72 + replayProgress * .0028));
   const angle = -90 + displayedValue * 1.8;
 
   useGSAP(() => {
     if (!root.current || reducedMotion) return;
-    gsap.fromTo(root.current.querySelector(".gauge-progress"), { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 1.2, ease: "power3.out" });
-    gsap.fromTo(root.current.querySelector(".gauge-needle"), { rotation: -90, transformOrigin: "120px 120px" }, { rotation: angle, duration: 1.25, ease: "elastic.out(1, .65)" });
+    if (!entranceDoneRef.current) {
+      entranceDoneRef.current = true;
+      gsap.fromTo(root.current.querySelector(".gauge-progress"), { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 1.2, ease: "power3.out" });
+      gsap.fromTo(root.current.querySelector(".gauge-needle"), { rotation: -90, transformOrigin: "120px 120px" }, { rotation: angle, duration: 1.25, ease: "elastic.out(1, .65)" });
+    } else {
+      gsap.to(root.current.querySelector(".gauge-needle"), { rotation: angle, duration: 0.4, ease: "power2.out", overwrite: "auto" });
+    }
   }, { scope: root, dependencies: [angle, reducedMotion] });
 
   return (
@@ -2235,17 +2274,34 @@ function Dashboard() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  // Subtle mouse parallax on the 3D scene layer
+  // Merged: scene parallax + cursor spotlight — single RAF-throttled mousemove handler
   useEffect(() => {
+    const scene = root.current?.querySelector<HTMLElement>(".scene-layer") ?? null;
+    const workspace = root.current?.querySelector<HTMLElement>(".workspace") ?? null;
+    if (!scene && !workspace) return;
+    let rafId: number | null = null;
+    let clientX = 0, clientY = 0;
+    const process = () => {
+      rafId = null;
+      if (scene) {
+        const x = (clientX / window.innerWidth - 0.5) * 14;
+        const y = (clientY / window.innerHeight - 0.5) * 9;
+        scene.style.transform = `translate(${x}px, ${y}px)`;
+      }
+      if (workspace) {
+        workspace.style.setProperty("--cx", `${clientX}px`);
+        workspace.style.setProperty("--cy", `${clientY}px`);
+      }
+    };
     const handleMouseMove = (e: MouseEvent) => {
-      const scene = root.current?.querySelector<HTMLElement>(".scene-layer");
-      if (!scene) return;
-      const x = (e.clientX / window.innerWidth - 0.5) * 14;
-      const y = (e.clientY / window.innerHeight - 0.5) * 9;
-      scene.style.transform = `translate(${x}px, ${y}px)`;
+      clientX = e.clientX; clientY = e.clientY;
+      if (rafId === null) rafId = requestAnimationFrame(process);
     };
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   // CSS Houdini paint worklet registration
@@ -2253,18 +2309,6 @@ function Dashboard() {
     if ('paintWorklet' in CSS) {
       (CSS as unknown as { paintWorklet: { addModule: (url: string) => void } }).paintWorklet.addModule('/noise-bg.js');
     }
-  }, []);
-
-  // Cursor spotlight on workspace via CSS vars --cx / --cy
-  useEffect(() => {
-    const workspace = root.current?.querySelector<HTMLElement>(".workspace");
-    if (!workspace) return;
-    const handleMove = (e: MouseEvent) => {
-      workspace.style.setProperty("--cx", `${e.clientX}px`);
-      workspace.style.setProperty("--cy", `${e.clientY}px`);
-    };
-    window.addEventListener("mousemove", handleMove, { passive: true });
-    return () => window.removeEventListener("mousemove", handleMove);
   }, []);
 
   // Feature 1: Magnetic cursor
