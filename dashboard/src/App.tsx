@@ -1,5 +1,9 @@
 import { Canvas, useFrame } from "@react-three/fiber";
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, useReducedMotion, useScroll } from "framer-motion";
+import { TextEffect } from "./components/core/text-effect";
+import { InView } from "./components/core/in-view";
+import { Magnetic } from "./components/core/magnetic";
+import { AnimatedGroup } from "./components/core/animated-group";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -765,14 +769,14 @@ function Sidebar({ activePage, setActivePage, open, setOpen }: { activePage: Pag
       <div className="brand">
         <div className="brand-icon"><MorphingBrandIcon anomaly={anomalyLens} /></div>
         <div>
-          <strong className="brand-shimmer">RetailPulse</strong>
-          <span>Intelligence OS</span>
+          <strong className="brand-shimmer"><TextEffect per="char" preset="blur" delay={0.1} speedReveal={1.6} as="span">RetailPulse</TextEffect></strong>
+          <span><TextEffect per="word" preset="fade" delay={0.3} speedReveal={2.5} as="span">Intelligence OS</TextEffect></span>
         </div>
         <button className="sidebar-close" onClick={() => setOpen(false)} aria-label="Close navigation"><X size={18} /></button>
       </div>
 
       <nav className="main-nav" aria-label="Primary navigation">
-        {navItems.map((item) => {
+        {navItems.map((item, navIdx) => {
           const Icon = item.icon;
           const isActive = activePage === item.id;
           return (
@@ -785,7 +789,7 @@ function Sidebar({ activePage, setActivePage, open, setOpen }: { activePage: Pag
                 />
               )}
               <Icon size={18} />
-              <span><strong>{item.label}</strong><small>{item.kicker}</small></span>
+              <span><strong><TextEffect per="word" preset="fade" delay={0.05 + navIdx * 0.06} speedReveal={2.5} as="span">{item.label}</TextEffect></strong><small>{item.kicker}</small></span>
               <em>{item.stat}</em>
             </button>
           );
@@ -794,7 +798,7 @@ function Sidebar({ activePage, setActivePage, open, setOpen }: { activePage: Pag
 
       <div className="sidebar-card">
         <span className="status-orb" />
-        <strong>Model stack online</strong>
+        <strong><TextEffect per="word" preset="fade-in-blur" delay={0.1} speedReveal={2} as="span">Model stack online</TextEffect></strong>
         <p>Forecast drift below tolerance. 7 modules synced.</p>
       </div>
     </aside>
@@ -861,8 +865,13 @@ function HeroPanel({ page, onInsight, onRefine }: { page: NavItem; onInsight: ()
         initial="initial"
         animate="animate"
       >
-        <motion.span variants={heroItemVariants} className="eyebrow"><Icon size={16} /> {meta.eyebrow}</motion.span>
-        <motion.h1 variants={heroItemVariants}>{meta.title}</motion.h1>
+        <motion.span variants={heroItemVariants} className="eyebrow">
+          <Icon size={16} />{" "}
+          <TextEffect per="char" preset="blur" delay={0.15} speedReveal={2.2} speedSegment={1.4} as="span">{meta.eyebrow}</TextEffect>
+        </motion.span>
+        <motion.h1 variants={heroItemVariants}>
+          <TextEffect per="word" preset="fade-in-blur" delay={0.25} speedReveal={1.8} speedSegment={1.2} as="span">{meta.title}</TextEffect>
+        </motion.h1>
         {streamWords.length > 0 ? (
           <motion.p variants={heroItemVariants} className="insight-stream">
             {streamWords.map((w, i) => (
@@ -878,14 +887,20 @@ function HeroPanel({ page, onInsight, onRefine }: { page: NavItem; onInsight: ()
           <motion.p variants={heroItemVariants}>{meta.summary}</motion.p>
         )}
         <motion.div variants={heroItemVariants} className="hero-actions">
-          <button type="button" className="primary-action magnetic" onClick={handleInsight}><Sparkles size={17} /> Generate insight</button>
+          <Magnetic intensity={0.45} range={90} springOptions={{ stiffness: 30, damping: 5, mass: 0.25 }}>
+            <button type="button" className="primary-action magnetic" onClick={handleInsight}><Sparkles size={17} /> Generate insight</button>
+          </Magnetic>
           <button type="button" className="secondary-action" onClick={onRefine}><Filter size={17} /> Refine view</button>
         </motion.div>
       </motion.div>
       <div className="hero-metrics">
         {[meta.primary, meta.secondary, meta.tertiary].map((metric, index) => (
           <div key={metric}>
-            <small>{["Primary signal", "Operational read", "Trend state"][index]}</small>
+            <small>
+              <TextEffect per="word" preset="fade" delay={0.4 + index * 0.12} speedReveal={2} as="span">
+                {["Primary signal", "Operational read", "Trend state"][index]}
+              </TextEffect>
+            </small>
             <AnimatedValue value={metric} />
           </div>
         ))}
@@ -940,7 +955,7 @@ function KpiGrid({ items = kpis }: { items?: typeof kpis }) {
         >
           <div className="metric-top"><span><Icon size={18} /></span></div>
           <AnimatedValue value={value} />
-          <p>{label}</p>
+          <p><TextEffect per="word" preset="fade" delay={0.18 + index * 0.05} speedReveal={2} as="span">{label}</TextEffect></p>
           <TrendIndicator value={delta} />
         </motion.article>
       ))}
@@ -1025,7 +1040,10 @@ function Panel({
       transition={{ type: "spring", stiffness: 160, damping: 22 }}
     >
       <div className="panel-heading">
-        <div><span>{kicker}</span><h2>{title}</h2></div>
+        <div>
+          <span><TextEffect per="word" preset="fade" delay={0.05} speedReveal={2.5} as="span">{kicker}</TextEffect></span>
+          <h2><TextEffect per="word" preset="fade-in-blur" delay={0.12} speedReveal={2} speedSegment={1.1} as="span">{title}</TextEffect></h2>
+        </div>
         <div className="panel-actions">
           {storyEnabled ? (
             <button type="button" title={`Play data story for ${title}`} aria-label={`Play Data Story ${title}`} onClick={() => setStoryOpen(true)}><PlayCircle size={15} /></button>
@@ -1465,15 +1483,25 @@ function GaugeDial({ value }: { value: number }) {
 
 function ActivityFeed() {
   return (
-    <div className="activity-feed">
-      {activity.map(([title, body, time, tone], index) => (
-        <motion.article initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * .055 }} key={title} className={`activity-${tone}`}>
-          <span />
-          <div><strong>{title}</strong><p>{body}</p></div>
-          <em>{time}</em>
-        </motion.article>
-      ))}
-    </div>
+    <InView
+      variants={{ hidden: { opacity: 0, y: 18, filter: "blur(6px)" }, visible: { opacity: 1, y: 0, filter: "blur(0px)" } }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      viewOptions={{ amount: 0.1 }}
+      once
+    >
+      <div className="activity-feed">
+        {activity.map(([title, body, time, tone], index) => (
+          <motion.article initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * .055 }} key={title} className={`activity-${tone}`}>
+            <span />
+            <div>
+              <strong><TextEffect per="word" preset="fade" delay={index * 0.04} speedReveal={3} as="span">{title}</TextEffect></strong>
+              <p>{body}</p>
+            </div>
+            <em>{time}</em>
+          </motion.article>
+        ))}
+      </div>
+    </InView>
   );
 }
 
@@ -1496,7 +1524,7 @@ function SegmentCards() {
           viewport={{ once: true, margin: "-40px" }}
           transition={{ delay: i * 0.06, type: "spring", stiffness: 200, damping: 22 }}
         >
-          <div><strong>{name}</strong><span>{count} customers</span></div>
+          <div><strong><TextEffect per="word" preset="fade" delay={i * 0.05} speedReveal={2.5} as="span">{name}</TextEffect></strong><span>{count} customers</span></div>
           <em>{ltv} CLV</em>
           <p>{action}</p>
           <motion.b
@@ -1574,12 +1602,12 @@ function ExecPulseCard({ title, value, label, tone, icon: Icon, delta }: {
       <span className="exec-card-glow" aria-hidden="true" />
       <motion.span className="exec-card-glare" aria-hidden="true" style={{ background: glareStyle }} />
       <div className="exec-card-header">
-        <span className="exec-card-title">{title}</span>
+        <span className="exec-card-title"><TextEffect per="word" preset="fade" delay={0.08} speedReveal={2.5} as="span">{title}</TextEffect></span>
         <span className="exec-card-icon"><Icon size={20} /></span>
       </div>
       <AnimatedValue className="exec-card-value" value={value} />
       <div className="exec-card-footer">
-        <span className="exec-card-label">{label}</span>
+        <span className="exec-card-label"><TextEffect per="word" preset="fade" delay={0.15} speedReveal={2.5} as="span">{label}</TextEffect></span>
         <span className={`exec-card-delta ${isNeg ? "neg" : "pos"}`}>
           <DeltaIcon size={13} strokeWidth={2.8} />{delta}
         </span>
@@ -1599,10 +1627,15 @@ function ExecutivePulseSection() {
     <section className="exec-pulse animate-in">
       <div className="exec-pulse-head">
         <div>
-          <span className="eyebrow exec-pulse-eyebrow"><RadioTower size={16} /> Executive Pulse</span>
-          <h2 className="exec-pulse-h2">Live performance intelligence</h2>
+          <span className="eyebrow exec-pulse-eyebrow">
+            <RadioTower size={16} />{" "}
+            <TextEffect per="char" preset="blur" delay={0.1} speedReveal={2} as="span">Executive Pulse</TextEffect>
+          </span>
+          <h2 className="exec-pulse-h2">
+            <TextEffect per="word" preset="fade-in-blur" delay={0.2} speedReveal={1.8} speedSegment={1.2} as="span">Live performance intelligence</TextEffect>
+          </h2>
         </div>
-        <div className="exec-pulse-controls">
+        <AnimatedGroup className="exec-pulse-controls" preset="slide" as="div" asChild="div">
           <label className="exec-filter">
             <RadioTower size={14} />
             <select value={region} onChange={(e) => setRegion(e.target.value)} aria-label="Filter by region">
@@ -1623,7 +1656,7 @@ function ExecutivePulseSection() {
               <option value="q2">Q2 2026</option>
             </select>
           </label>
-        </div>
+        </AnimatedGroup>
       </div>
 
       <div className="exec-pulse-grid">
@@ -1793,7 +1826,10 @@ function ReportsPage() {
   return (
     <>
       <section className="report-builder animate-in">
-        <div><span className="eyebrow"><Table2 size={16} /> Report builder</span><h2>Board-ready exports</h2></div>
+        <div>
+          <span className="eyebrow"><Table2 size={16} /> <TextEffect per="char" preset="blur" delay={0.1} speedReveal={2} as="span">Report builder</TextEffect></span>
+          <h2><TextEffect per="word" preset="fade-in-blur" delay={0.2} speedReveal={2} as="span">Board-ready exports</TextEffect></h2>
+        </div>
         {reports.map((item) => <button type="button" aria-pressed={activeReport === item} className={activeReport === item ? "active" : ""} onClick={() => setActiveReport(item)} key={item}>{item}</button>)}
       </section>
       <KpiGrid items={[
@@ -1857,8 +1893,8 @@ function MediaStudioPage() {
     <>
       <section className="media-studio animate-in">
         <div className="media-control-panel">
-          <span className="eyebrow"><Film size={16} /> Remotion studio</span>
-          <h2>Executive video generator</h2>
+          <span className="eyebrow"><Film size={16} /> <TextEffect per="char" preset="blur" delay={0.1} speedReveal={2} as="span">Remotion studio</TextEffect></span>
+          <h2><TextEffect per="word" preset="fade-in-blur" delay={0.2} speedReveal={1.8} speedSegment={1.2} as="span">Executive video generator</TextEffect></h2>
           <p>Use the current dashboard signals to preview cinematic reports, chart stories, and board-ready operational replays.</p>
 
           <label>
@@ -1965,8 +2001,8 @@ function AccordionPanel({ title, kicker, icon: Icon, children, defaultOpen = fal
       <button type="button" className="t-acc-trigger" aria-expanded={open} onClick={() => setOpen(!open)}>
         <Icon size={17} className="acc-icon" />
         <div className="acc-title-group">
-          <strong>{title}</strong>
-          <span>{kicker}</span>
+          <strong><TextEffect per="word" preset="fade" delay={0.05} speedReveal={2.5} as="span">{title}</TextEffect></strong>
+          <span><TextEffect per="word" preset="fade" delay={0.1} speedReveal={3} as="span">{kicker}</TextEffect></span>
         </div>
         <svg className="acc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" width={16} height={16}>
           <polyline points="6 9 12 15 18 9" />
