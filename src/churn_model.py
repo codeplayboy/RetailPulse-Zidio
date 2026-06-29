@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
+import joblib
 import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 
 __all__ = [
     "load_customer_data",
@@ -22,6 +25,10 @@ __all__ = [
     "identify_high_risk_customers",
     "generate_churn_report",
     "save_predictions",
+    "build_churn_feature_frame",
+    "train_churn_model_artifacts",
+    "save_churn_model_artifacts",
+    "load_churn_model_artifacts",
 ]
 
 logger = logging.getLogger(__name__)
@@ -286,3 +293,128 @@ def save_predictions(df: pd.DataFrame, output_path: Union[str, Path]) -> None:
     except Exception as exc:  # pragma: no cover - defensive logging
         logger.error("Failed to save churn predictions: %s", exc)
         raise OSError(f"Failed to save churn predictions: {exc}") from exc
+
+
+DEFAULT_CHURN_FEATURE_COLUMNS: Tuple[str, ...] = (
+    "Total_Orders",
+    "Purchase_Frequency",
+    "Customer_Lifetime_Value",
+    "Total_Revenue",
+    "Average_Order_Value",
+    "Average_Basket_Size",
+    "Age",
+    "Total_Quantity_Purchased",
+)
+
+
+def build_churn_feature_frame(
+    df: pd.DataFrame,
+    feature_columns: Optional[Sequence[str]] = None,
+) -> pd.DataFrame:
+    """Create a numeric feature frame for churn model training.
+
+    The feature set is intentionally kept compact and production-friendly so it
+    can be used in both training and inference with a saved scaler.
+    """
+    df = _validate_dataframe(df, "df")
+    resolved_columns = list(feature_columns or DEFAULT_CHURN_FEATURE_COLUMNS)
+    _validate_columns(df, resolved_columns, "build_churn_feature_frame")
+
+    feature_df = df.loc[:, resolved_columns].copy()
+    for column in resolved_columns:
+        feature_df[column] = pd.to_numeric(feature_df[column], errors="coerce")
+
+    feature_df = feature_df.fillna(0.0)
+    return feature_df
+
+
+def save_churn_model_artifacts(
+    model: Any,
+    scaler: StandardScaler,
+    feature_columns: Sequence[str],
+    model_path: Union[str, Path] = "models/churn_model.pkl",
+    scaler_path: Union[str, Path] = "models/scaler_churn.pkl",
+    feature_columns_path: Union[str, Path] = "models/churn_feature_cols.pkl",
+) -> Dict[str, Path]:
+    """Persist churn model artifacts to disk using joblib."""
+    model_path = Path(model_path)
+    scaler_path = Path(scaler_path)
+    feature_columns_path = Path(feature_columns_path)
+
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    scaler_path.parent.mkdir(parents=True, exist_ok=True)
+    feature_columns_path.parent.mkdir(parents=True, exist_ok=True)
+
+    joblib.dump(model, model_path)
+    joblib.dump(scaler, scaler_path)
+    joblib.dump(list(feature_columns), feature_columns_path)
+
+    logger.info("Saved churn artifacts to %s, %s, %s", model_path, scaler_path, feature_columns_path)
+    return {
+        "model_path": model_path,
+        "scaler_path": scaler_path,
+        "feature_columns_path": feature_columns_path,
+    }
+
+
+def load_churn_model_artifacts(
+    model_path: Union[str, Path] = "models/churn_model.pkl",
+    scaler_path: Union[str, Path] = "models/scaler_churn.pkl",
+    feature_columns_path: Union[str, Path] = "models/churn_feature_cols.pkl",
+) -> Dict[str, Any]:
+    """Load churn model artifacts produced by save_churn_model_artifacts."""
+    model_path = Path(model_path)
+    scaler_path = Path(scaler_path)
+    feature_columns_path = Path(feature_columns_path)
+
+    if not model_path.exists():
+        raise FileNotFoundError(f"Churn model artifact not found: {model_path}")
+    if not scaler_path.exists():
+        raise FileNotFoundError(f"Churn scaler artifact not found: {scaler_path}")
+    if not feature_columns_path.exists():
+        raise FileNotFoundError(f"Churn feature column artifact not found: {feature_columns_path}")
+
+    model = joblib.load(model_path)
+    scaler = joblib.load(scaler_path)
+    feature_columns = joblib.load(feature_columns_path)
+
+    return {
+        "model": model,
+        "scaler": scaler,
+        "feature_columns": feature_columns,
+    }
+
+
+def train_churn_model_artifacts(
+    df: pd.DataFrame,
+    feature_columns: Optional[Sequence[str]] = None,
+    model_path: Union[str, Path] = "models/churn_model.pkl",
+    scaler_path: Union[str, Path] = "models/scaler_churn.pkl",
+    feature_columns_path: Union[str, Path] = "models/churn_feature_cols.pkl",
+) -> Dict[str, Any]:
+    """Train and persist a production churn model with a separate scaler."""
+    df = create_churn_labels(df)
+    feature_df = build_churn_feature_frame(df, feature_columns=feature_columns)
+    labels = df["Churn"].eq("Yes").astype(int)
+
+    scaler = StandardScaler()
+    scaled_features = scaler.fit_transform(feature_df)
+
+    churn_model = LogisticRegression(max_iter=1000, random_state=42)
+    churn_model.fit(scaled_features, labels)
+
+    saved_paths = save_churn_model_artifacts(
+        churn_model,
+        scaler,
+        feature_df.columns.tolist(),
+        model_path=model_path,
+        scaler_path=scaler_path,
+        feature_columns_path=feature_columns_path,
+    )
+
+    return {
+        "model": churn_model,
+        "scaler": scaler,
+        "feature_columns": feature_df.columns.tolist(),
+        "paths": saved_paths,
+    }
