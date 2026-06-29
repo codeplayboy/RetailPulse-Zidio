@@ -34,3 +34,5 @@ vite.config.d.ts
 
 # Local QA screenshots
 react-dashboard-*.png
+
+.vercel

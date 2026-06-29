@@ -946,18 +946,18 @@ function HeroPanel({ page, onInsight, onRefine }: { page: NavItem; onInsight: ()
         animate="animate"
       >
         <motion.span variants={heroItemVariants} className="eyebrow">
-          <Icon size={16} />{" "}
-          <TextEffect per="char" preset="blur" delay={0.05} speedReveal={3.5} as="span">{meta.eyebrow}</TextEffect>
+          <Icon size={16} />
+          <span>{meta.eyebrow}</span>
         </motion.span>
         <motion.h1 variants={heroItemVariants}>
-          <TextEffect per="word" preset="fade-in-blur" delay={0.1} speedReveal={2.5} speedSegment={1.5} as="span">{meta.title}</TextEffect>
+          {meta.title}
         </motion.h1>
         {streamWords.length > 0 ? (
           <motion.p variants={heroItemVariants} className="insight-stream">
             {streamWords.map((w, i) => (
               <motion.span key={`${w}-${i}`} className="stream-word"
-                initial={{ opacity: 0, y: 5, filter: 'blur(4px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.24, delay: i * 0.022, ease: 'easeOut' }}
               >{w}{' '}</motion.span>
             ))}
@@ -973,15 +973,218 @@ function HeroPanel({ page, onInsight, onRefine }: { page: NavItem; onInsight: ()
           <button type="button" className="secondary-action" onClick={onRefine}><Filter size={17} /> Refine view</button>
         </motion.div>
       </motion.div>
+      <HeroShowcase page={page} meta={meta} />
+    </section>
+  );
+}
+
+function HeroShowcase({
+  page,
+  meta,
+}: {
+  page: NavItem;
+  meta: { eyebrow: string; title: string; summary: string; primary: string; secondary: string; tertiary: string };
+}) {
+  const labels = ["Primary signal", "Operational read", "Trend state"];
+  const trendBars = [42, 68, 58, 88, 74, 92, 64, 98];
+  const riskBars = [86, 72, 58, 47, 39];
+  const forecastPoints = [74, 52, 64, 58, 82, 76, 92, 88];
+  const stockBars = [54, 78, 62, 91, 66, 48];
+  const segmentNodes = [
+    { x: 18, y: 32, size: 20, tone: "violet" },
+    { x: 38, y: 58, size: 14, tone: "cyan" },
+    { x: 50, y: 24, size: 18, tone: "gold" },
+    { x: 68, y: 48, size: 24, tone: "violet" },
+    { x: 82, y: 28, size: 16, tone: "cyan" },
+    { x: 74, y: 72, size: 15, tone: "gold" },
+  ];
+
+  const renderVisual = () => {
+    switch (page.id) {
+      case "segmentation":
+        return (
+          <div className="hero-visual hero-visual-segmentation">
+            <div className="hero-visual-grid">
+              {segmentNodes.map((node, index) => (
+                <motion.div
+                  key={`${node.x}-${node.y}`}
+                  className={`hero-node tone-${node.tone}`}
+                  style={{ left: `${node.x}%`, top: `${node.y}%`, width: node.size * 2, height: node.size * 2 }}
+                  initial={{ opacity: 0, scale: 0.7 }}
+                  animate={{ opacity: 1, scale: 1, y: [0, index % 2 === 0 ? -7 : 7, 0] }}
+                  transition={{ duration: 3.2 + index * 0.16, repeat: Infinity, ease: "easeInOut", delay: index * 0.08 }}
+                />
+              ))}
+              <svg className="hero-link-map" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M18 32 C28 36, 33 52, 38 58 S45 34, 50 24 S62 34, 68 48 S76 34, 82 28" />
+                <path d="M38 58 C44 62, 61 66, 74 72" />
+                <path d="M50 24 C56 26, 72 26, 82 28" />
+              </svg>
+              <div className="hero-visual-caption">
+                <span>Cluster drift live</span>
+                <strong>6 strategic cohorts mapped</strong>
+              </div>
+            </div>
+          </div>
+        );
+      case "churn":
+        return (
+          <div className="hero-visual hero-visual-churn">
+            <div className="hero-ring-shell">
+              <div className="hero-ring hero-ring-a" />
+              <div className="hero-ring hero-ring-b" />
+              <div className="hero-ring hero-ring-c" />
+              <motion.div
+                className="hero-ring-core"
+                animate={{ scale: [1, 1.08, 1], opacity: [0.85, 1, 0.85] }}
+                transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+              />
+            </div>
+            <div className="hero-risk-bars">
+              {riskBars.map((value, index) => (
+                <motion.span
+                  key={value}
+                  style={{ height: `${value}%` }}
+                  initial={{ opacity: 0, scaleY: 0.3 }}
+                  animate={{ opacity: 1, scaleY: 1 }}
+                  transition={{ delay: 0.08 * index, duration: 0.45 }}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      case "forecasting":
+        return (
+          <div className="hero-visual hero-visual-forecasting">
+            <svg viewBox="0 0 320 180" className="hero-line-chart" aria-hidden="true">
+              <defs>
+                <linearGradient id="forecast-fill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(34,211,238,0.5)" />
+                  <stop offset="100%" stopColor="rgba(34,211,238,0)" />
+                </linearGradient>
+              </defs>
+              <path className="hero-chart-band" d="M18 126 C42 108, 58 118, 82 98 S124 116, 148 82 S192 92, 214 62 S260 88, 302 38 L302 160 L18 160 Z" />
+              <path className="hero-chart-line" d="M18 126 C42 108, 58 118, 82 98 S124 116, 148 82 S192 92, 214 62 S260 88, 302 38" />
+              {forecastPoints.map((point, index) => (
+                <circle key={index} className="hero-chart-dot" cx={18 + index * 40} cy={170 - point} r="4" />
+              ))}
+            </svg>
+            <div className="hero-forecast-tags">
+              {["Weekly seasonality", "MAPE tuned", "Confidence band"].map((label) => <span key={label}>{label}</span>)}
+            </div>
+          </div>
+        );
+      case "inventory":
+        return (
+          <div className="hero-visual hero-visual-inventory">
+            <div className="hero-stock-columns">
+              {stockBars.map((value, index) => (
+                <motion.div
+                  key={index}
+                  className="hero-stock-column"
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.06, duration: 0.4 }}
+                >
+                  <span style={{ height: `${value}%` }} />
+                </motion.div>
+              ))}
+            </div>
+            <div className="hero-visual-caption">
+              <span>Stock equilibrium</span>
+              <strong>Critical, reorder, surplus in one frame</strong>
+            </div>
+          </div>
+        );
+      case "reports":
+        return (
+          <div className="hero-visual hero-visual-reports">
+            <motion.div className="hero-report-card report-back" animate={{ rotate: [-8, -6, -8], y: [0, -4, 0] }} transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut" }} />
+            <motion.div className="hero-report-card report-mid" animate={{ rotate: [5, 7, 5], y: [0, -6, 0] }} transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }} />
+            <div className="hero-report-card report-front">
+              <span>Export pipeline</span>
+              <strong>CSV, PDF, board pack</strong>
+              <div>
+                {["Revenue", "Churn", "Inventory"].map((label) => <i key={label}>{label}</i>)}
+              </div>
+            </div>
+          </div>
+        );
+      case "media":
+        return (
+          <div className="hero-visual hero-visual-media">
+            <div className="hero-media-frame">
+              <div className="hero-media-head" />
+              <div className="hero-media-timeline">
+                <motion.b
+                  animate={{ x: ["0%", "220%", "0%"] }}
+                  transition={{ duration: 5.4, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </div>
+            </div>
+            <div className="hero-media-scenes">
+              {["Intro", "Metrics", "Forecast", "Outro"].map((scene, index) => (
+                <motion.span key={scene} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * index }}>
+                  {scene}
+                </motion.span>
+              ))}
+            </div>
+          </div>
+        );
+      case "settings":
+        return (
+          <div className="hero-visual hero-visual-settings">
+            <div className="hero-settings-hub">
+              <motion.div className="hero-settings-core" animate={{ rotate: 360 }} transition={{ duration: 18, repeat: Infinity, ease: "linear" }} />
+              <span className="hub-a">Theme</span>
+              <span className="hub-b">Alerts</span>
+              <span className="hub-c">Models</span>
+              <span className="hub-d">Access</span>
+            </div>
+          </div>
+        );
+      case "overview":
+      default:
+        return (
+          <div className="hero-visual hero-visual-overview">
+            <div className="hero-overview-orb" />
+            <svg viewBox="0 0 320 180" className="hero-line-chart" aria-hidden="true">
+              <path className="hero-chart-grid" d="M18 140 H302 M18 104 H302 M18 68 H302 M18 32 H302" />
+              <path className="hero-chart-line" d="M18 128 C42 108, 54 112, 76 94 S116 88, 138 102 S184 118, 210 76 S262 54, 302 42" />
+            </svg>
+            <div className="hero-trend-bars">
+              {trendBars.map((value, index) => (
+                <motion.i
+                  key={index}
+                  style={{ height: `${value}%` }}
+                  initial={{ opacity: 0, scaleY: 0.25 }}
+                  animate={{ opacity: 1, scaleY: 1 }}
+                  transition={{ delay: 0.05 * index, duration: 0.45 }}
+                />
+              ))}
+            </div>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="hero-stage">
+      {renderVisual()}
       <div className="hero-metrics">
         {[meta.primary, meta.secondary, meta.tertiary].map((metric, index) => (
-          <div key={metric}>
-            <small><TextEffect per="word" preset="fade" delay={0.15 + index * 0.05} speedReveal={3.5} as="span">{["Primary signal", "Operational read", "Trend state"][index]}</TextEffect></small>
+          <motion.div
+            key={metric}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 * index, duration: 0.32 }}
+          >
+            <small><TextEffect per="word" preset="fade" delay={0.15 + index * 0.05} speedReveal={3.5} as="span">{labels[index]}</TextEffect></small>
             <AnimatedValue value={metric} />
-          </div>
+          </motion.div>
         ))}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -1111,10 +1314,9 @@ function Panel({
   return (
     <motion.section
       className={`panel ${className}`}
-      initial={{ opacity: 0, y: 18, scale: 0.97 }}
-      whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true, margin: "0px 0px 600px 0px" }}
-      transition={{ type: "spring", stiffness: 240, damping: 26 }}
+      initial={false}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 240, damping: 26, duration: 0.24 }}
     >
       <div className="panel-heading">
         <div>
@@ -1569,47 +1771,93 @@ function ScatterPlot() {
   );
 }
 
+function polarToCartesian(cx: number, cy: number, radius: number, angleDeg: number) {
+  const angleRad = (angleDeg * Math.PI) / 180;
+  return {
+    x: cx + Math.cos(angleRad) * radius,
+    y: cy + Math.sin(angleRad) * radius,
+  };
+}
+
+function describeArc(cx: number, cy: number, radius: number, startAngle: number, endAngle: number) {
+  const start = polarToCartesian(cx, cy, radius, startAngle);
+  const end = polarToCartesian(cx, cy, radius, endAngle);
+  const largeArcFlag = Math.abs(endAngle - startAngle) > 180 ? 1 : 0;
+  const sweepFlag = endAngle > startAngle ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} ${sweepFlag} ${end.x} ${end.y}`;
+}
+
 function GaugeDial({ value }: { value: number }) {
   const root = useRef<HTMLDivElement>(null);
   const entranceDoneRef = useRef(false);
   const { replayProgress, reducedMotion } = useLivingOS();
+  const gradientId = useId().replace(/:/g, "");
+  const cx = 130;
+  const cy = 132;
+  const radius = 92;
+  const tickInnerRadius = 76;
+  const tickOuterRadius = 84;
+  const needleLength = radius * 0.88;
+  const startAngle = 180;
+  const endAngle = 360;
   const displayedValue = Math.round(value * (.72 + replayProgress * .0028));
-  const angle = -90 + displayedValue * 1.8;
+  const needleAngle = startAngle + (displayedValue / 100) * (endAngle - startAngle);
+  const needleRotation = needleAngle - startAngle;
+  const arcPath = describeArc(cx, cy, radius, startAngle, endAngle);
 
   useGSAP(() => {
     if (!root.current || reducedMotion) return;
+    const needle = root.current.querySelector(".gauge-needle");
+    const progress = root.current.querySelector(".gauge-progress");
+    if (!needle || !progress) return;
+
     if (!entranceDoneRef.current) {
       entranceDoneRef.current = true;
-      gsap.fromTo(root.current.querySelector(".gauge-progress"), { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 1.2, ease: "power3.out" });
-      gsap.fromTo(root.current.querySelector(".gauge-needle"), { rotation: -90, transformOrigin: "120px 120px" }, { rotation: angle, duration: 1.25, ease: "elastic.out(1, .65)" });
+      gsap.fromTo(progress, { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 1.1, ease: "power3.out" });
+      gsap.fromTo(
+        needle,
+        { attr: { transform: `rotate(0 ${cx} ${cy})` } },
+        { attr: { transform: `rotate(${needleRotation} ${cx} ${cy})` }, duration: 1.15, ease: "elastic.out(1, .68)" },
+      );
     } else {
-      gsap.to(root.current.querySelector(".gauge-needle"), { rotation: angle, duration: 0.4, ease: "power2.out", overwrite: "auto" });
+      gsap.to(needle, {
+        attr: { transform: `rotate(${needleRotation} ${cx} ${cy})` },
+        duration: 0.38,
+        ease: "power2.out",
+        overwrite: "auto",
+      });
     }
-  }, { scope: root, dependencies: [angle, reducedMotion] });
+  }, { scope: root, dependencies: [needleRotation, reducedMotion] });
 
   return (
     <div ref={root} className="gauge" role="img" aria-label={`Inventory health ${displayedValue} out of 100`}>
-      <svg viewBox="0 0 240 150" aria-hidden="true">
+      <svg viewBox="0 0 260 190" aria-hidden="true" preserveAspectRatio="xMidYMid meet">
         <defs>
-          <linearGradient id="gaugeProgress" x1="0" x2="1">
+          <linearGradient id={gradientId} x1="0%" y1="100%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#a855f7" />
             <stop offset="55%" stopColor="#22d3ee" />
             <stop offset="100%" stopColor="#34d399" />
           </linearGradient>
         </defs>
-        <path className="gauge-track" pathLength="100" d="M30 120 A90 90 0 0 1 210 120" />
-        <path className="gauge-progress" pathLength="100" strokeDasharray={`${displayedValue} ${100 - displayedValue}`} d="M30 120 A90 90 0 0 1 210 120" />
+        <path className="gauge-track" pathLength="100" d={arcPath} />
+        <path
+          className="gauge-progress"
+          pathLength="100"
+          strokeDasharray={`${displayedValue} ${100 - displayedValue}`}
+          d={arcPath}
+          style={{ stroke: `url(#${gradientId})` }}
+        />
         {[0, 25, 50, 75, 100].map((tick) => {
-          const tickAngle = (-180 + tick * 1.8) * (Math.PI / 180);
-          const x1 = 120 + Math.cos(tickAngle) * 76;
-          const y1 = 120 + Math.sin(tickAngle) * 76;
-          const x2 = 120 + Math.cos(tickAngle) * 84;
-          const y2 = 120 + Math.sin(tickAngle) * 84;
-          return <line key={tick} className="gauge-tick" x1={x1} y1={y1} x2={x2} y2={y2} />;
+          const tickAngle = startAngle - (tick / 100) * (startAngle - endAngle);
+          const inner = polarToCartesian(cx, cy, tickInnerRadius, tickAngle);
+          const outer = polarToCartesian(cx, cy, tickOuterRadius, tickAngle);
+          return <line key={`tick-${tick}`} className="gauge-tick" x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} />;
         })}
-        <g className="gauge-needle">
-          <line x1="120" y1="120" x2="120" y2="48" />
-          <circle cx="120" cy="120" r="8" />
+        <g className="gauge-needle" transform={`rotate(${needleRotation} ${cx} ${cy})`}>
+          <line x1={cx} y1={cy} x2={cx - needleLength} y2={cy} />
+          <line className="gauge-counterweight" x1={cx} y1={cy} x2={cx + 16} y2={cy} />
+          <circle className="gauge-pivot-ring" cx={cx} cy={cy} r="10" />
+          <circle className="gauge-pivot-core" cx={cx} cy={cy} r="5.5" />
         </g>
       </svg>
       <div className="gauge-reading">
@@ -1623,14 +1871,14 @@ function GaugeDial({ value }: { value: number }) {
 function ActivityFeed() {
   return (
     <InView
-      variants={{ hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0 } }}
+      variants={{ hidden: { opacity: 1, y: 0 }, visible: { opacity: 1, y: 0 } }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       viewOptions={{ amount: 0, margin: "200px" }}
       once
     >
       <div className="activity-feed">
         {activity.map(([title, body, time, tone], index) => (
-          <motion.article initial={{ opacity: 0, x: 8 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, margin: "0px 0px 200px 0px" }} transition={{ delay: index * .03 }} key={title} className={`activity-${tone}`}>
+          <motion.article initial={false} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * .03, duration: 0.24 }} key={title} className={`activity-${tone}`}>
             <span />
             <div>
               <strong><TextEffect per="word" preset="fade" delay={index * 0.03} speedReveal={4} as="span">{title}</TextEffect></strong>
@@ -1647,7 +1895,7 @@ function ActivityFeed() {
 function LuxuryTable({ rows, wide = false }: { rows: string[][]; wide?: boolean }) {
   return (
     <div className={wide ? "lux-table wide" : "lux-table"}>
-      {rows.map((row, index) => <motion.div initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "0px 0px 200px 0px" }} transition={{ delay: index * .045 }} key={row.join("-")}>{row.map((cell) => <span key={cell}>{cell}</span>)}</motion.div>)}
+      {rows.map((row, index) => <motion.div initial={false} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * .03, duration: 0.22 }} key={row.join("-")}>{row.map((cell) => <span key={cell}>{cell}</span>)}</motion.div>)}
     </div>
   );
 }
@@ -1842,14 +2090,16 @@ function SegmentationPage() {
     <>
       <KpiGrid items={dashboardDataState.segmentationKpis} />
       <section className="tab-strip animate-in" aria-label="Customer intelligence views">
-        {tabs.map((tab) => (
-          <button type="button" aria-pressed={activeTab === tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)} key={tab}>
-            {activeTab === tab && (
-              <motion.span className="tab-pill" layoutId="seg-tab-pill" transition={{ type: "spring", stiffness: 380, damping: 30 }} />
-            )}
-            {tab}
-          </button>
-        ))}
+        <div className="tab-list">
+          {tabs.map((tab) => (
+            <button type="button" aria-pressed={activeTab === tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)} key={tab}>
+              {activeTab === tab && (
+                <motion.span className="tab-pill" layoutId="seg-tab-pill" transition={{ type: "spring", stiffness: 380, damping: 30 }} />
+              )}
+              {tab}
+            </button>
+          ))}
+        </div>
         <span className="tab-status">Viewing {activeTab}</span>
       </section>
       <section className="dashboard-grid">
@@ -1925,7 +2175,7 @@ function InventoryPage() {
     <>
       <KpiGrid items={dashboardDataState.inventoryKpis} />
       <section className="dashboard-grid">
-        <Panel title="Inventory Health" kicker="Weighted across all SKUs" icon={Gauge}><GaugeDial value={dashboardDataState.inventoryHealthScore} /></Panel>
+        <Panel className="inventory-gauge-panel" title="Inventory Health" kicker="Weighted across all SKUs" icon={Gauge} storyEnabled={false}><GaugeDial value={dashboardDataState.inventoryHealthScore} /></Panel>
         <Panel title="Stock Alerts" kicker="Items needing attention now" icon={Bell}><ActivityFeed /></Panel>
         <Panel title="Product Stock Heatmap" kicker="Average days-of-cover by category" icon={Layers3}><HeatMap /></Panel>
         <Panel title="Reorder Schedule" kicker="Upcoming fulfillment orders" icon={CalendarDays}><StackedBars values={heat.slice(0, 7)} labels={["P1", "P2", "P3", "P4", "P5", "P6", "P7"]} /></Panel>
@@ -2265,7 +2515,6 @@ const heroItemVariants = {
 // Direction-aware page slide: matches transitions-dev page side-by-side token values.
 // Forward (+1) slides in from right, backward (-1) slides in from left.
 const PAGE_SLIDE_DISTANCE = 8;   // --page-slide-distance: 8px
-const PAGE_BLUR = 3;             // --page-blur: 3px
 const PAGE_SLIDE_DUR = 0.25;     // --page-slide-dur: 250ms
 const PAGE_EASE = [0.22, 1, 0.36, 1] as const; // --page-slide-ease
 
@@ -2273,18 +2522,15 @@ const pageVariants = {
   initial: (dir: number) => ({
     opacity: 0,
     x: dir * PAGE_SLIDE_DISTANCE,
-    filter: `blur(${PAGE_BLUR}px)`,
   }),
   animate: {
     opacity: 1,
     x: 0,
-    filter: "blur(0px)",
     transition: { duration: PAGE_SLIDE_DUR, ease: PAGE_EASE },
   },
   exit: (dir: number) => ({
     opacity: 0,
     x: dir * -PAGE_SLIDE_DISTANCE,
-    filter: `blur(${PAGE_BLUR}px)`,
     transition: { duration: PAGE_SLIDE_DUR, ease: PAGE_EASE },
   }),
 };
@@ -2325,6 +2571,11 @@ function Dashboard() {
     const nextIdx = navItems.findIndex((n) => n.id === activePage);
     directionRef.current = nextIdx >= prevIdx ? 1 : -1;
     prevPageRef.current = activePage;
+  }, [activePage]);
+
+  useEffect(() => {
+    const workspace = root.current?.querySelector<HTMLElement>(".workspace");
+    workspace?.scrollTo({ top: 0, behavior: "auto" });
   }, [activePage]);
 
   useEffect(() => {
@@ -2426,13 +2677,6 @@ function Dashboard() {
 
   return (
     <main ref={root} className={`app-shell theme-${theme} density-${density} ${anomalyLens ? "anomaly-lens" : ""}`}>
-      <div className="scene-layer">
-        <CanvasErrorBoundary>
-          <Canvas camera={{ position: [0, 0, 7.5], fov: 44 }} dpr={performanceTier === "high" ? [1, 1.2] : 1} gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}>
-            <EnvironmentScene theme={theme} />
-          </Canvas>
-        </CanvasErrorBoundary>
-      </div>
       <InkReveal trigger={pageChangeCounter} />
       <Sidebar activePage={activePage} setActivePage={handleSetActivePage} open={navOpen} setOpen={setNavOpen} />
       <section className="workspace">
@@ -2442,15 +2686,15 @@ function Dashboard() {
             <motion.div
               key="skeleton"
               initial={{ opacity: 1 }}
-              exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.25 } }}
+              exit={{ opacity: 0, transition: { duration: 0.2 } }}
             >
               <SkeletonDashboard />
             </motion.div>
           ) : (
             <motion.div
               key="content"
-              initial={{ opacity: 0, filter: "blur(4px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)", transition: { duration: 0.3, delay: 0.05 } }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.24, delay: 0.04, ease: PAGE_EASE } }}
             >
               <HeroPanel
                 page={active}

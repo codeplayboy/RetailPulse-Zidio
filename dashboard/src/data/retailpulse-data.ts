@@ -127,6 +127,15 @@ type ChurnRow = {
   Total_Orders: number;
 };
 
+type CustomerDetailRow = {
+  Customer_ID: string;
+  Customer_Segment: string;
+  Loyalty_Status: string;
+  Preferred_Category: string;
+  Customer_Lifetime_Value: number;
+  Total_Orders: number;
+};
+
 const DATA_BASE = `${import.meta.env.BASE_URL}data/`;
 
 const ACTION_BY_SEGMENT: Record<string, string> = {
@@ -270,6 +279,7 @@ function buildDashboardData(
   inventoryRows: InventoryRow[],
   forecastRows: ForecastRow[],
   churnRows: ChurnRow[],
+  highRiskOverride: ChurnRow[] = [],
 ): DashboardData {
   const sortedRevenue = [...revenueRows].sort((a, b) => parseDate(a.Date).getTime() - parseDate(b.Date).getTime());
   const sortedDemand = [...demandRows].sort((a, b) => parseDate(a.Date).getTime() - parseDate(b.Date).getTime());
@@ -303,7 +313,8 @@ function buildDashboardData(
   );
 
   const riskCounts = groupBy(churnRows, (row) => row.Churn_Risk);
-  const highRisk = riskCounts.get("High") ?? [];
+  const computedHighRisk = riskCounts.get("High") ?? [];
+  const highRisk = highRiskOverride.length ? highRiskOverride : computedHighRisk;
   const mediumRisk = riskCounts.get("Medium") ?? [];
   const lowRisk = riskCounts.get("Low") ?? [];
   const riskRate = totalCustomers ? (highRisk.length / totalCustomers) * 100 : 0;
@@ -697,6 +708,12 @@ async function fetchText(path: string): Promise<string> {
   return response.text();
 }
 
+async function fetchOptionalText(path: string): Promise<string | null> {
+  const response = await fetch(path);
+  if (!response.ok) return null;
+  return response.text();
+}
+
 export function useRetailPulseData(): DashboardData {
   const [data, setData] = useState<DashboardData>(EMPTY_DATA);
 
@@ -710,8 +727,10 @@ export function useRetailPulseData(): DashboardData {
       fetchText(`${DATA_BASE}demand_forecast.csv`),
       fetchText(`${DATA_BASE}churn_predictions.csv`),
       fetchText(`${DATA_BASE}inventory_recommendations.csv`),
+      fetchText(`${DATA_BASE}high_risk_customers.csv`),
+      fetchOptionalText(`${DATA_BASE}customer_details.csv`),
     ])
-      .then(([revenueCsv, demandCsv, inventoryCsv, forecastCsv, churnCsv, inventoryRecCsv]) => {
+      .then(([revenueCsv, demandCsv, inventoryCsv, forecastCsv, churnCsv, inventoryRecCsv, highRiskCsv, customerDetailsCsv]) => {
         const revenueRows = csvToObjects(revenueCsv, (row) => ({
           Date: row.Date,
           Total_Revenue: parseNumber(row.Total_Revenue),
@@ -762,10 +781,10 @@ export function useRetailPulseData(): DashboardData {
           : inventoryBase;
 
         const forecastRows = csvToObjects(forecastCsv, (row) => ({
-          ds: row.ds,
-          yhat: parseNumber(row.yhat),
-          yhat_lower: parseNumber(row.yhat_lower),
-          yhat_upper: parseNumber(row.yhat_upper),
+          ds: row.ds ?? row.Date,
+          yhat: parseNumber(row.yhat ?? row.Predicted_Demand),
+          yhat_lower: parseNumber(row.yhat_lower ?? row.Lower_Bound),
+          yhat_upper: parseNumber(row.yhat_upper ?? row.Upper_Bound),
         }));
 
         const churnRows = csvToObjects(churnCsv, (row) => ({
@@ -780,7 +799,55 @@ export function useRetailPulseData(): DashboardData {
           Total_Orders: parseNumber(row.Total_Orders),
         }));
 
-        const next = buildDashboardData(revenueRows, demandRows, inventoryRows, forecastRows, churnRows);
+        const customerDetailRows = customerDetailsCsv
+          ? csvToObjects(customerDetailsCsv, (row) => ({
+              Customer_ID: row.Customer_ID,
+              Customer_Segment: row.Customer_Segment,
+              Loyalty_Status: row.Loyalty_Status,
+              Preferred_Category: row.Preferred_Category,
+              Customer_Lifetime_Value: parseNumber(row.Customer_Lifetime_Value),
+              Total_Orders: parseNumber(row.Total_Orders),
+            }))
+          : [];
+
+        const highRiskRows = csvToObjects(highRiskCsv, (row) => ({
+          Customer_ID: row.Customer_ID,
+          Customer_Segment: row.Customer_Segment,
+          Loyalty_Status: row.Loyalty_Status,
+          Preferred_Category: row.Preferred_Category,
+          Days_Since_Last_Purchase: parseNumber(row.Days_Since_Last_Purchase),
+          Churn_Risk: row.Churn_Risk,
+          Risk_Level: row.Risk_Level,
+          Customer_Lifetime_Value: parseNumber(row.Customer_Lifetime_Value),
+          Total_Orders: parseNumber(row.Total_Orders),
+        }));
+
+        const churnMap = new Map(churnRows.map((row) => [row.Customer_ID, row]));
+        const enrichedChurnRows = customerDetailRows.length
+          ? customerDetailRows.map((row) => {
+              const churn = churnMap.get(row.Customer_ID);
+              return {
+                Customer_ID: row.Customer_ID,
+                Customer_Segment: churn?.Customer_Segment || row.Customer_Segment,
+                Loyalty_Status: churn?.Loyalty_Status || row.Loyalty_Status,
+                Preferred_Category: churn?.Preferred_Category || row.Preferred_Category,
+                Days_Since_Last_Purchase: churn?.Days_Since_Last_Purchase ?? 0,
+                Churn_Risk: churn?.Churn_Risk || "Low",
+                Risk_Level: churn?.Risk_Level || "Low Risk",
+                Customer_Lifetime_Value: churn?.Customer_Lifetime_Value || row.Customer_Lifetime_Value,
+                Total_Orders: churn?.Total_Orders || row.Total_Orders,
+              } satisfies ChurnRow;
+            })
+          : churnRows;
+
+        const next = buildDashboardData(
+          revenueRows,
+          demandRows,
+          inventoryRows,
+          forecastRows,
+          enrichedChurnRows,
+          highRiskRows,
+        );
         if (active) setData(next);
       })
       .catch((error: unknown) => {
