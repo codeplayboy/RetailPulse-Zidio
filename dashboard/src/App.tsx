@@ -1,5 +1,4 @@
-import { Canvas, useFrame } from "@react-three/fiber";
-import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, useReducedMotion, useScroll } from "framer-motion";
+﻿import { motion, AnimatePresence, useMotionValue, useTransform, useSpring, useReducedMotion, useScroll } from "framer-motion";
 import { TextEffect } from "./components/core/text-effect";
 import { InView } from "./components/core/in-view";
 import { Magnetic } from "./components/core/magnetic";
@@ -49,9 +48,8 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { Component, lazy, Suspense, type CSSProperties, type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, type CSSProperties, type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import * as THREE from "three";
 import "./App.css";
 import { createFallbackDashboardData, useRetailPulseData } from "./data/retailpulse-data";
 import {
@@ -73,6 +71,10 @@ const DonutIntroPlayer = lazy(() =>
 const DataStoryPlayer = lazy(() =>
   import("./chart-animations").then((module) => ({ default: module.DataStoryPlayer }))
 );
+const ModuleStoryPlayer = lazy(() =>
+  import("./chart-animations").then((module) => ({ default: module.ModuleStoryPlayer }))
+);
+const VolumeBars3D = lazy(() => import("./components/volume-bars-3d"));
 
 type NavItem = {
   id: PageId;
@@ -94,6 +96,19 @@ let navItems: NavItem[] = [
   { id: "media", label: "Media Studio", kicker: "Video stories", icon: Film, stat: "Remotion" },
   { id: "settings", label: "Settings", kicker: "Models + controls", icon: Settings, stat: "Live" },
 ];
+
+// Canonical story-type list â€” shared between the hero badge row and MediaStudioPage.
+const MEDIA_STORY_TYPES = [
+  "Executive Briefing",
+  "Customer Segment",
+  "Churn Intelligence",
+  "Demand Forecast",
+  "Inventory Command",
+  "Analytics Report",
+  "Platform Intelligence",
+  "Master Reel",
+] as const;
+type MediaStoryType = (typeof MEDIA_STORY_TYPES)[number];
 
 let pageMeta: Record<PageId, { eyebrow: string; title: string; summary: string; primary: string; secondary: string; tertiary: string }> = {
   overview: {
@@ -148,7 +163,7 @@ let pageMeta: Record<PageId, { eyebrow: string; title: string; summary: string; 
     eyebrow: "Remotion Media Studio",
     title: "Turn live analytics into cinematic data stories.",
     summary: "Preview executive video briefings, chart stories, and operational replays using the current RetailPulse visual system and data signals.",
-    primary: "7 story scenes",
+    primary: `${MEDIA_STORY_TYPES.length} story scenes`,
     secondary: "16:9 preview",
     tertiary: "MP4-ready flow",
   },
@@ -196,10 +211,30 @@ let heat = [72, 46, 88, 61, 94, 53, 78, 67, 91, 59, 83, 49, 76, 97, 63, 84];
 let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
 let barMonths = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
+function compactMetricLabel(value: string, suffixes: string[]) {
+  let next = value;
+  suffixes.forEach((suffix) => {
+    next = next.replace(new RegExp(`\\s+${suffix}$`, "i"), "");
+  });
+  return next.trim();
+}
+
 function buildNavItems() {
   return [
-    { id: "overview", label: "Executive Overview", kicker: "Board pulse", icon: BarChart3, stat: dashboardDataState.navStats.overview },
-    { id: "segmentation", label: "Customer Segmentation", kicker: "RFM + KMeans", icon: Users, stat: dashboardDataState.navStats.segmentation },
+    {
+      id: "overview",
+      label: "Executive Overview",
+      kicker: "Board pulse",
+      icon: BarChart3,
+      stat: compactMetricLabel(dashboardDataState.hero.overview.primary, ["revenue"]),
+    },
+    {
+      id: "segmentation",
+      label: "Customer Segmentation",
+      kicker: "RFM + KMeans",
+      icon: Users,
+      stat: compactMetricLabel(dashboardDataState.hero.segmentation.primary, ["profiled", "customers"]),
+    },
     { id: "churn", label: "Churn Prediction", kicker: "Retention risk", icon: TrendingDown, stat: dashboardDataState.navStats.churn },
     { id: "forecasting", label: "Demand Forecasting", kicker: "Prophet horizon", icon: LineChart, stat: dashboardDataState.navStats.forecasting },
     { id: "inventory", label: "Inventory Optimization", kicker: "Stock policy", icon: PackageCheck, stat: dashboardDataState.navStats.inventory },
@@ -263,9 +298,9 @@ function buildPageMeta(): typeof pageMeta {
       eyebrow: "Remotion Media Studio",
       title: "Turn live analytics into cinematic data stories.",
       summary: "Preview executive video briefings, chart stories, and operational replays using the current RetailPulse visual system and data signals.",
-      primary: "7 story scenes",
-      secondary: "16:9 preview",
-      tertiary: "MP4-ready flow",
+      primary: `${MEDIA_STORY_TYPES.length} story scenes`,
+      secondary: dashboardDataState.hero.reports.primary,
+      tertiary: dashboardDataState.hero.reports.tertiary,
     },
     settings: {
       eyebrow: "Platform Configuration",
@@ -278,7 +313,7 @@ function buildPageMeta(): typeof pageMeta {
   };
 }
 
-// ── FEATURE 1: MAGNETIC CURSOR ───────────────────────────────────────────────
+// â”€â”€ FEATURE 1: MAGNETIC CURSOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function useMagneticCursor(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
@@ -323,7 +358,7 @@ function useMagneticCursor(enabled: boolean) {
   }, [enabled]);
 }
 
-// ── FEATURE 3: DEPTH-OF-FIELD FOCUS PLANE ────────────────────────────────────
+// â”€â”€ FEATURE 3: DEPTH-OF-FIELD FOCUS PLANE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function useDepthOfField(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
@@ -356,7 +391,7 @@ function useDepthOfField(enabled: boolean) {
   }, [enabled]);
 }
 
-// ── FEATURE 2: INK/WATERCOLOR PAGE REVEAL ────────────────────────────────────
+// â”€â”€ FEATURE 2: INK/WATERCOLOR PAGE REVEAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function InkReveal({ trigger }: { trigger: number }) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const prevRef = useRef(trigger);
@@ -387,7 +422,7 @@ function InkReveal({ trigger }: { trigger: number }) {
   );
 }
 
-// ── FEATURE 4: FORCE-DIRECTED SEGMENT GRAPH ──────────────────────────────────
+// â”€â”€ FEATURE 4: FORCE-DIRECTED SEGMENT GRAPH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ForceGraph() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { reducedMotion } = useLivingOS();
@@ -477,7 +512,7 @@ function ForceGraph() {
   return <canvas ref={canvasRef} className="force-graph-canvas" aria-label="Customer segment force graph" />;
 }
 
-// ── FEATURE 5: VORONOI TERRITORY MAP ─────────────────────────────────────────
+// â”€â”€ FEATURE 5: VORONOI TERRITORY MAP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function VoronoiCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { reducedMotion } = useLivingOS();
@@ -549,7 +584,7 @@ function VoronoiCanvas() {
   return <canvas ref={canvasRef} className="voronoi-canvas" aria-label="Customer territory map" />;
 }
 
-// ── FEATURE 10: CHURN NEURAL NET VISUALIZATION ───────────────────────────────
+// â”€â”€ FEATURE 10: CHURN NEURAL NET VISUALIZATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ChurnNeuralNet() {
   const layers = [
     ['Recency', 'Frequency', 'Monetary', 'Email', 'Support'],
@@ -575,7 +610,7 @@ function ChurnNeuralNet() {
       }
     }
     return result;
-  }, []); // layers/positions derive from in-function constants — stable across renders
+  }, []); // layers/positions derive from in-function constants â€” stable across renders
   return (
     <svg className="churn-neural-net" viewBox={`0 0 ${W} ${H}`} aria-label="Churn prediction neural network visualization">
       <defs>
@@ -607,7 +642,7 @@ function ChurnNeuralNet() {
   );
 }
 
-// ── FEATURE 12: MORPHING SVG BRAND ICON ──────────────────────────────────────
+// â”€â”€ FEATURE 12: MORPHING SVG BRAND ICON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function MorphingBrandIcon({ anomaly }: { anomaly: boolean }) {
   return (
     <svg viewBox="0 0 24 20" width="22" height="22" fill="none" aria-hidden="true">
@@ -625,52 +660,8 @@ function MorphingBrandIcon({ anomaly }: { anomaly: boolean }) {
   );
 }
 
-// ── FEATURE 7: 3D VOLUME BARS ─────────────────────────────────────────────────
-function VolumeBarsScene({ reducedMotion }: { reducedMotion: boolean }) {
-  const groupRef = useRef<THREE.Group>(null);
-  const heights = [58, 86, 64, 92, 74, 96, 69, 88, 78, 100, 82, 93];
-  const colors = ['#a855f7', '#6366f1', '#22d3ee', '#f472b6'];
-  useFrame((state) => {
-    if (groupRef.current && !reducedMotion) {
-      const t = state.clock.elapsedTime;
-      groupRef.current.rotation.y = Math.sin(t * 0.38) * 0.26;
-      groupRef.current.position.y = Math.sin(t * 0.55) * 0.09 - 0.45;
-    }
-  });
-  return (
-    <group ref={groupRef} position={[0, -0.45, 0]}>
-      {heights.map((h, i) => {
-        const sy = (h / 100) * 2.4;
-        const col = colors[i % colors.length];
-        return (
-          <mesh key={i} position={[(i - heights.length / 2) * 0.28, sy / 2, 0]}>
-            <boxGeometry args={[0.2, sy, 0.2]} />
-            <meshStandardMaterial color={col} emissive={col} emissiveIntensity={0.38} metalness={0.58} roughness={0.22} />
-          </mesh>
-        );
-      })}
-      <ambientLight intensity={0.5} />
-      <pointLight position={[3, 4, 3]} intensity={2.2} color="#a855f7" />
-      <pointLight position={[-3, 2, 2]} intensity={1.6} color="#22d3ee" />
-    </group>
-  );
-}
-
-function VolumeBars3D() {
-  const { reducedMotion, performanceTier } = useLivingOS();
-  if (performanceTier === 'minimal') return <RevenueBars />;
-  return (
-    <div className="volume-bars-3d">
-      <Canvas camera={{ position: [0, 1.5, 5.6], fov: 42 }} gl={{ antialias: false, alpha: true }} dpr={1}>
-        <CanvasErrorBoundary>
-          <VolumeBarsScene reducedMotion={reducedMotion} />
-        </CanvasErrorBoundary>
-      </Canvas>
-    </div>
-  );
-}
-
-// ── FEATURE 14: FUZZY MATCH HIGHLIGHT ────────────────────────────────────────
+// â”€â”€ FEATURE 7: 3D VOLUME BARS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ FEATURE 14: FUZZY MATCH HIGHLIGHT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function fuzzyHighlight(text: string, query: string): ReactNode {
   if (!query.trim()) return text;
   const lower = text.toLowerCase();
@@ -688,110 +679,11 @@ function fuzzyHighlight(text: string, query: string): ReactNode {
   return <>{parts}</>;
 }
 
-class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() { return { hasError: true }; }
-  render() {
-    if (this.state.hasError) return null;
-    return this.props.children;
-  }
-}
-
-function EnvironmentScene({ theme }: { theme: ThemeMode }) {
-  const group = useRef<THREE.Group>(null);
-  const rings = useRef<THREE.Group>(null);
-  const { performanceTier, reducedMotion, replayProgress, systemStatus, anomalyLens } = useLivingOS();
-  const points = useMemo(() => {
-    const count = performanceTier === "high" ? 320 : performanceTier === "balanced" ? 160 : 60;
-    const data = new Float32Array(count * 3);
-    for (let i = 0; i < count; i += 1) {
-      const r = 5 + Math.random() * 14;
-      const theta = Math.random() * Math.PI * 2;
-      data[i * 3] = Math.cos(theta) * r;
-      data[i * 3 + 1] = (Math.random() - 0.5) * 8;
-      data[i * 3 + 2] = Math.sin(theta) * r - 4;
-    }
-    return data;
-  }, [performanceTier]);
-  const signalNodes = useMemo(() => [
-    [-3.8, 1.7, -2.2], [-2.6, .5, -1.5], [-1.2, 1.15, -2.8], [.2, -.15, -2],
-    [1.7, 1.35, -2.6], [3.2, .25, -1.8], [2.1, -1.3, -2.4], [.4, -1.65, -2.8],
-  ] as [number, number, number][], []);
-  const signalLines = useMemo(() => {
-    const data: number[] = [];
-    for (let i = 0; i < signalNodes.length - 1; i += 1) data.push(...signalNodes[i], ...signalNodes[i + 1]);
-    data.push(...signalNodes[1], ...signalNodes[4], ...signalNodes[3], ...signalNodes[6]);
-    return new Float32Array(data);
-  }, [signalNodes]);
-
-  useFrame(({ clock, pointer }) => {
-    if (document.hidden || reducedMotion) return;
-    const t = clock.getElapsedTime();
-    const replayVelocity = 0.018 + replayProgress * 0.0002;
-    if (group.current) {
-      group.current.rotation.y = t * replayVelocity + pointer.x * 0.08;
-      group.current.rotation.x = pointer.y * 0.045;
-    }
-    if (rings.current) {
-      rings.current.rotation.z = t * 0.07;
-      rings.current.rotation.y = Math.sin(t * 0.24) * 0.16;
-    }
-  });
-
-  const primary = anomalyLens ? "#f97316" : systemStatus === "watch" ? "#fb7185" : theme === "dark" ? "#a855f7" : "#9333ea";
-  const secondary = anomalyLens ? "#fbbf24" : theme === "dark" ? "#22d3ee" : "#0891b2";
-
-  return (
-    <>
-      <ambientLight intensity={theme === "dark" ? 1.8 : 2.2} />
-      <pointLight position={[4.5, 4, 5]} intensity={theme === "dark" ? 72 : 44} color={primary} />
-      <pointLight position={[-5, -2, 3]} intensity={theme === "dark" ? 48 : 52} color={secondary} />
-      <group ref={group}>
-        <points>
-          <bufferGeometry>
-            <bufferAttribute attach="attributes-position" args={[points, 3]} />
-          </bufferGeometry>
-          <pointsMaterial color={secondary} size={0.02} sizeAttenuation transparent opacity={0.5} />
-        </points>
-        <lineSegments>
-          <bufferGeometry>
-            <bufferAttribute attach="attributes-position" args={[signalLines, 3]} />
-          </bufferGeometry>
-          <lineBasicMaterial color={secondary} transparent opacity={performanceTier === "minimal" ? .12 : .28} />
-        </lineSegments>
-        {performanceTier !== "minimal" ? signalNodes.map((position, index) => (
-          <mesh key={`signal-${index}`} position={position}>
-            <sphereGeometry args={[index % 3 === 0 ? .065 : .04, 12, 12]} />
-            <meshStandardMaterial color={index % 2 ? secondary : primary} emissive={index % 2 ? secondary : primary} emissiveIntensity={1.8} />
-          </mesh>
-        )) : null}
-        <group ref={rings} position={[2.6, 0.3, -2]}>
-          {[0, 1, 2, 3].map((i) => (
-            <mesh key={i} rotation={[Math.PI / 2 + i * 0.26, i * 0.14, 0]}>
-              <torusGeometry args={[1.6 + i * 0.28, 0.01, 6, 48]} />
-              <meshStandardMaterial color={i % 2 ? secondary : primary} emissive={primary} metalness={0.9} roughness={0.18} transparent opacity={0.44} />
-            </mesh>
-          ))}
-        </group>
-        {bars.slice(0, 10).map((height, i) => (
-          <mesh key={i} position={[-4.1 + i * 0.34, -2.25 + height / 92, -2.4]} rotation={[0, 0.15, 0]}>
-            <boxGeometry args={[0.09, height / 50, 0.09]} />
-            <meshStandardMaterial color={primary} emissive={primary} metalness={0.75} roughness={0.2} />
-          </mesh>
-        ))}
-      </group>
-    </>
-  );
-}
-
 function usePageAnimation(root: React.RefObject<HTMLDivElement | null>, deps: unknown[]) {
   useGSAP(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const q = gsap.utils.selector(root);
-    const dur = reduceMotion ? 0.001 : 0.72;
+    const dur = reduceMotion ? 0.001 : 0.42;
     gsap.defaults({ ease: "power3.out", duration: dur });
 
     const entranceTargets = q(".animate-in");
@@ -840,8 +732,29 @@ function LiveClock() {
   return <span className="live-clock" aria-label="Current time">{time}</span>;
 }
 
-function Sidebar({ activePage, setActivePage, open, setOpen }: { activePage: PageId; setActivePage: (id: PageId) => void; open: boolean; setOpen: (open: boolean) => void }) {
+function Sidebar({
+  activePage,
+  setActivePage,
+  open,
+  setOpen,
+  items,
+  overviewStat,
+  segmentationStat,
+}: {
+  activePage: PageId;
+  setActivePage: (id: PageId) => void;
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  items: NavItem[];
+  overviewStat: string;
+  segmentationStat: string;
+}) {
   const { anomalyLens } = useLivingOS();
+  const resolveNavStat = (item: NavItem) => {
+    if (item.id === "overview") return overviewStat;
+    if (item.id === "segmentation") return segmentationStat;
+    return item.stat;
+  };
   return (
     <>
       {open && <div className="sidebar-overlay" onClick={() => setOpen(false)} />}
@@ -856,7 +769,7 @@ function Sidebar({ activePage, setActivePage, open, setOpen }: { activePage: Pag
       </div>
 
       <nav className="main-nav" aria-label="Primary navigation">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
           const isActive = activePage === item.id;
           return (
@@ -870,7 +783,7 @@ function Sidebar({ activePage, setActivePage, open, setOpen }: { activePage: Pag
               )}
               <Icon size={18} />
               <span><strong>{item.label}</strong><small>{item.kicker}</small></span>
-              <em>{item.stat}</em>
+              <em>{resolveNavStat(item)}</em>
             </button>
           );
         })}
@@ -918,7 +831,7 @@ function HeroPanel({ page, onInsight, onRefine }: { page: NavItem; onInsight: ()
 
   const handleInsight = useCallback(() => {
     onInsight();
-    const insight = `AI analysis complete — ${meta.summary.slice(0, 120)} Key opportunity detected: high-value segment growth accelerating 24% QoQ.`;
+    const insight = `AI analysis complete â€” ${meta.summary.slice(0, 120)} Key opportunity detected: high-value segment growth accelerating 24% QoQ.`;
     const words = insight.split(' ');
     setStreamWords([]);
     setStreaming(true);
@@ -961,7 +874,7 @@ function HeroPanel({ page, onInsight, onRefine }: { page: NavItem; onInsight: ()
                 transition={{ duration: 0.24, delay: i * 0.022, ease: 'easeOut' }}
               >{w}{' '}</motion.span>
             ))}
-            {streaming && <span className="stream-cursor">▋</span>}
+            {streaming && <span className="stream-cursor">â–‹</span>}
           </motion.p>
         ) : (
           <motion.p variants={heroItemVariants}>{meta.summary}</motion.p>
@@ -985,6 +898,8 @@ function HeroShowcase({
   page: NavItem;
   meta: { eyebrow: string; title: string; summary: string; primary: string; secondary: string; tertiary: string };
 }) {
+  const { performanceTier, reducedMotion } = useLivingOS();
+  const ambientMotion = performanceTier === "high" && !reducedMotion;
   const labels = ["Primary signal", "Operational read", "Trend state"];
   const trendBars = [42, 68, 58, 88, 74, 92, 64, 98];
   const riskBars = [86, 72, 58, 47, 39];
@@ -1011,8 +926,8 @@ function HeroShowcase({
                   className={`hero-node tone-${node.tone}`}
                   style={{ left: `${node.x}%`, top: `${node.y}%`, width: node.size * 2, height: node.size * 2 }}
                   initial={{ opacity: 0, scale: 0.7 }}
-                  animate={{ opacity: 1, scale: 1, y: [0, index % 2 === 0 ? -7 : 7, 0] }}
-                  transition={{ duration: 3.2 + index * 0.16, repeat: Infinity, ease: "easeInOut", delay: index * 0.08 }}
+                  animate={ambientMotion ? { opacity: 1, scale: 1, y: [0, index % 2 === 0 ? -7 : 7, 0] } : { opacity: 1, scale: 1 }}
+                  transition={ambientMotion ? { duration: 3.2 + index * 0.16, repeat: Infinity, ease: "easeInOut", delay: index * 0.08 } : { duration: 0.35, delay: index * 0.05 }}
                 />
               ))}
               <svg className="hero-link-map" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -1036,8 +951,8 @@ function HeroShowcase({
               <div className="hero-ring hero-ring-c" />
               <motion.div
                 className="hero-ring-core"
-                animate={{ scale: [1, 1.08, 1], opacity: [0.85, 1, 0.85] }}
-                transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+                animate={ambientMotion ? { scale: [1, 1.08, 1], opacity: [0.85, 1, 0.85] } : { scale: 1, opacity: 0.92 }}
+                transition={ambientMotion ? { duration: 2.8, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
               />
             </div>
             <div className="hero-risk-bars">
@@ -1070,7 +985,7 @@ function HeroShowcase({
               ))}
             </svg>
             <div className="hero-forecast-tags">
-              {["Weekly seasonality", "MAPE tuned", "Confidence band"].map((label) => <span key={label}>{label}</span>)}
+              {["Weekly seasonality", "Regressor-aware", "22.53% MAPE"].map((label) => <span key={label}>{label}</span>)}
             </div>
           </div>
         );
@@ -1099,8 +1014,8 @@ function HeroShowcase({
       case "reports":
         return (
           <div className="hero-visual hero-visual-reports">
-            <motion.div className="hero-report-card report-back" animate={{ rotate: [-8, -6, -8], y: [0, -4, 0] }} transition={{ duration: 4.6, repeat: Infinity, ease: "easeInOut" }} />
-            <motion.div className="hero-report-card report-mid" animate={{ rotate: [5, 7, 5], y: [0, -6, 0] }} transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }} />
+            <motion.div className="hero-report-card report-back" animate={ambientMotion ? { rotate: [-8, -6, -8], y: [0, -4, 0] } : { rotate: -7, y: 0 }} transition={ambientMotion ? { duration: 4.6, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }} />
+            <motion.div className="hero-report-card report-mid" animate={ambientMotion ? { rotate: [5, 7, 5], y: [0, -6, 0] } : { rotate: 6, y: 0 }} transition={ambientMotion ? { duration: 4.2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }} />
             <div className="hero-report-card report-front">
               <span>Export pipeline</span>
               <strong>CSV, PDF, board pack</strong>
@@ -1117,13 +1032,13 @@ function HeroShowcase({
               <div className="hero-media-head" />
               <div className="hero-media-timeline">
                 <motion.b
-                  animate={{ x: ["0%", "220%", "0%"] }}
-                  transition={{ duration: 5.4, repeat: Infinity, ease: "easeInOut" }}
+                  animate={ambientMotion ? { x: ["0%", "220%", "0%"] } : { x: "0%" }}
+                  transition={ambientMotion ? { duration: 5.4, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
                 />
               </div>
             </div>
             <div className="hero-media-scenes">
-              {["Intro", "Metrics", "Forecast", "Outro"].map((scene, index) => (
+              {MEDIA_STORY_TYPES.slice(0, 4).map((scene, index) => (
                 <motion.span key={scene} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * index }}>
                   {scene}
                 </motion.span>
@@ -1135,7 +1050,7 @@ function HeroShowcase({
         return (
           <div className="hero-visual hero-visual-settings">
             <div className="hero-settings-hub">
-              <motion.div className="hero-settings-core" animate={{ rotate: 360 }} transition={{ duration: 18, repeat: Infinity, ease: "linear" }} />
+              <motion.div className="hero-settings-core" animate={ambientMotion ? { rotate: 360 } : { rotate: 0 }} transition={ambientMotion ? { duration: 18, repeat: Infinity, ease: "linear" } : { duration: 0.3 }} />
               <span className="hub-a">Theme</span>
               <span className="hub-b">Alerts</span>
               <span className="hub-c">Models</span>
@@ -1198,7 +1113,7 @@ function FilterDock() {
       <button className="secondary-action" onClick={() => setExpanded(e => !e)}><SlidersHorizontal size={16} /> Advanced filters</button>
       <div className={`filter-advanced${expanded ? " is-open" : ""}`}>
         <div className="filter-advanced-inner">
-          <Control title="Revenue threshold" value="$0 – $50K" />
+          <Control title="Revenue threshold" value="$0 â€“ $50K" />
           <Control title="Churn risk" value="All" />
           <Control title="Segment" value="All segments" />
         </div>
@@ -1280,16 +1195,88 @@ function TrendIndicator({ value }: { value: string }) {
 }
 
 type StoryMode = "line" | "bars" | "donut" | "gauge";
+type StorySpec = {
+  mode: StoryMode;
+  visual?: "line" | "bars" | "donut" | "gauge" | "stream" | "ranked" | "volume" | "monthly" | "heatmap" | "network" | "scatter" | "table" | "timeline";
+  storyId?: string;
+  metric: string;
+  narrative?: string;
+  outro?: string;
+  rows?: string[][];
+  accent?: string;
+  secondaryAccent?: string;
+  lineSeries?: number[];
+  lineMonths?: string[];
+  barSeries?: number[];
+  donutValues?: number[];
+  donutColors?: string[];
+  gaugeValue?: number;
+};
 
-function getPanelStorySpec(title: string): { mode: StoryMode; metric: string } {
+function getPanelStorySpec(title: string): StorySpec {
   const normalized = title.toLowerCase();
-  if (normalized.includes("churn") || normalized.includes("risk")) return { mode: "gauge", metric: "-2.6%" };
-  if (normalized.includes("inventory") || normalized.includes("health")) return { mode: "gauge", metric: "82/100" };
-  if (normalized.includes("distribution") || normalized.includes("category") || normalized.includes("mix")) return { mode: "donut", metric: "+6.8%" };
-  if (normalized.includes("bar") || normalized.includes("performance") || normalized.includes("timeline") || normalized.includes("queue")) return { mode: "bars", metric: "+8.4%" };
-  if (normalized.includes("forecast") || normalized.includes("demand")) return { mode: "line", metric: "94.2%" };
-  if (normalized.includes("report") || normalized.includes("export")) return { mode: "bars", metric: "5 packs" };
-  return { mode: "line", metric: "+12.6%" };
+  const d = dashboardDataState;
+  const donutColors = ["#a855f7", "#22d3ee", "#34d399", "#fbbf24", "#f472b6"];
+  const streamRows = d.activity.slice(0, 5).map((item) => [item[0], item[1], item[2]]);
+
+  if (normalized.includes("revenue trend")) {
+    return { mode: "line", visual: "line", storyId: "revenue-trend", metric: d.navStats.overview, lineSeries: d.revenueSeries, lineMonths: d.revenueMonths, accent: "#22d3ee", secondaryAccent: "#f59e0b", narrative: "Daily revenue redraws from the live dataset, then resolves into the current executive revenue signal.", outro: "Daily revenue story complete." };
+  }
+  if (normalized.includes("product category")) {
+    const topShare = d.categoryValues.length > 0 ? `${d.categoryValues[0].toFixed(1)}%` : "Top share";
+    return { mode: "donut", visual: "donut", storyId: "product-category", metric: topShare, donutValues: d.categoryValues, donutColors, accent: "#a855f7", secondaryAccent: "#34d399", narrative: "Revenue share splits by category so the strongest product family becomes instantly visible.", outro: "Category mix decoded." };
+  }
+  if (normalized.includes("live activity feed") || normalized.includes("stock alerts") || normalized.includes("export queue")) {
+    return { mode: "bars", visual: "stream", storyId: "activity-feed", metric: "Live", rows: streamRows, accent: "#22c55e", secondaryAccent: "#60a5fa", narrative: "Live operational events replay in sequence across models, inventory, customers, and reporting.", outro: "Event stream synchronized." };
+  }
+  if (normalized.includes("monthly performance")) {
+    return { mode: "bars", visual: "monthly", storyId: "monthly-performance", metric: d.hero.overview.tertiary, barSeries: d.bars.slice(-7), accent: "#f59e0b", secondaryAccent: "#ec4899", narrative: "Revenue and profit rise together month by month, making margin movement readable instead of hidden.", outro: "Monthly performance packaged." };
+  }
+  if (normalized.includes("top selling")) {
+    return { mode: "bars", visual: "ranked", storyId: "top-selling-products", metric: d.navStats.overview, rows: d.topProductsRows.slice(0, 5), barSeries: d.horizontalBarValues, accent: "#fbbf24", secondaryAccent: "#22d3ee", narrative: "Products are ranked by total revenue contribution to show which SKUs are carrying the business.", outro: "Leaderboard locked." };
+  }
+  if (normalized.includes("3d volume") || normalized.includes("volume analysis")) {
+    return { mode: "bars", visual: "volume", storyId: "volume-analysis", metric: d.hero.overview.tertiary, barSeries: d.bars, accent: "#8b5cf6", secondaryAccent: "#22d3ee", narrative: "The same volume signal becomes a dimensional field, revealing intensity and depth across the operating period.", outro: "Volume field mapped." };
+  }
+  if (normalized.includes("segment distribution")) {
+    return { mode: "donut", visual: "donut", storyId: "segment-distribution", metric: d.navStats.segmentation, donutValues: d.segmentValues, donutColors, accent: "#c084fc", secondaryAccent: "#f472b6", narrative: "Customer segments separate into weighted cohorts for targeting, retention, and value expansion.", outro: "Segment distribution resolved." };
+  }
+  if (normalized.includes("customer lifetime")) {
+    return { mode: "bars", visual: "ranked", storyId: "customer-lifetime-value", metric: d.hero.segmentation.secondary, rows: d.horizontalBarLabels.slice(0, 5).map((label, index) => [label, `${d.horizontalBarValues[index] ?? 0}`, "CLV"]), barSeries: d.horizontalBarValues, accent: "#34d399", secondaryAccent: "#a855f7", narrative: "Customer value tiers rank by contribution so priority segments are clear.", outro: "CLV ranking complete." };
+  }
+  if (normalized.includes("cluster scatter") || normalized.includes("force graph") || normalized.includes("neural network")) {
+    return { mode: "line", visual: "network", storyId: normalized.includes("neural") ? "churn-neural-network" : "segment-network", metric: d.navStats.segmentation, accent: "#22d3ee", secondaryAccent: "#ef4444", narrative: "The model view becomes a relationship map, showing how signals connect before the final prediction.", outro: "Network state explained." };
+  }
+  if (normalized.includes("heatmap") || normalized.includes("territory")) {
+    return { mode: "bars", visual: "heatmap", storyId: "heatmap-story", metric: d.hero.inventory.tertiary, barSeries: d.heat, accent: "#34d399", secondaryAccent: "#f59e0b", narrative: "Dense operational signals convert into a heat field to expose pressure, concentration, and opportunity.", outro: "Heat field analyzed." };
+  }
+  if (normalized.includes("forecast detail") || normalized.includes("recommendation") || normalized.includes("preview")) {
+    const tableRows = normalized.includes("forecast") ? d.forecastRows : normalized.includes("inventory") ? d.inventoryRecommendationRows : normalized.includes("retention") ? d.churnRecommendationRows : d.topProductsRows;
+    return { mode: "bars", visual: "table", storyId: "table-story", metric: `${tableRows.length} rows`, rows: tableRows.slice(0, 5), barSeries: d.bars, accent: "#6366f1", secondaryAccent: "#22d3ee", narrative: "Structured rows are promoted into an executive-ready replay with ranked evidence and next actions.", outro: "Table evidence packaged." };
+  }
+  if (normalized.includes("timeline") || normalized.includes("weekly trend") || normalized.includes("reorder schedule")) {
+    return { mode: "bars", visual: "timeline", storyId: "timeline-story", metric: d.hero.forecasting.tertiary, barSeries: normalized.includes("reorder") ? d.heat.slice(0, 7) : d.bars.slice(-7), accent: "#60a5fa", secondaryAccent: "#fbbf24", narrative: "The time sequence builds bar by bar so operational timing and pressure are easier to read.", outro: "Timeline ready." };
+  }
+  if (normalized.includes("churn") || normalized.includes("risk")) {
+    return { mode: "gauge", visual: "gauge", storyId: "risk-gauge", metric: d.navStats.churn, gaugeValue: Math.max(0, Math.min(100, parseFloat(d.navStats.churn) || 34.4)), accent: "#ef4444", secondaryAccent: "#f97316", narrative: "Risk is compressed into a gauge so retention pressure is readable at a glance.", outro: "Risk posture captured." };
+  }
+  if (normalized.includes("inventory") || normalized.includes("health")) {
+    return { mode: "gauge", visual: "gauge", storyId: "inventory-health", metric: d.navStats.inventory, gaugeValue: d.inventoryHealthScore, accent: "#fbbf24", secondaryAccent: "#22d3ee", narrative: "Inventory health resolves into a single stock posture score with supporting operational context.", outro: "Inventory posture stabilized." };
+  }
+  if (normalized.includes("distribution") || normalized.includes("category") || normalized.includes("mix")) {
+    const topShare = d.categoryValues.length > 0 ? `${d.categoryValues[0].toFixed(1)}%` : "+6.8%";
+    return { mode: "donut", visual: "donut", storyId: "distribution", metric: topShare, donutValues: d.categoryValues, donutColors, accent: "#a855f7", secondaryAccent: "#34d399", narrative: "Distribution is visualized as a weighted share map with the leading pocket emphasized.", outro: "Distribution decoded." };
+  }
+  if (normalized.includes("bar") || normalized.includes("performance") || normalized.includes("timeline") || normalized.includes("queue")) {
+    return { mode: "bars", visual: "bars", storyId: "bar-performance", metric: d.navStats.overview, barSeries: d.bars, accent: "#f59e0b", secondaryAccent: "#ec4899", narrative: "Bars rise in sequence to reveal the shape and pace of recent performance.", outro: "Performance pattern complete." };
+  }
+  if (normalized.includes("forecast") || normalized.includes("demand")) {
+    return { mode: "line", visual: "line", storyId: "forecast-line", metric: d.navStats.forecasting, lineSeries: d.revenueSeries, lineMonths: d.revenueMonths, accent: "#22d3ee", secondaryAccent: "#34d399", narrative: "Historical demand extends into the planning horizon with model confidence context.", outro: "Forecast story complete." };
+  }
+  if (normalized.includes("report") || normalized.includes("export")) {
+    return { mode: "bars", visual: "stream", storyId: "report-export", metric: d.navStats.reports, rows: streamRows, barSeries: d.bars, accent: "#6366f1", secondaryAccent: "#22d3ee", narrative: "Report operations replay as queued, validated, and export-ready events.", outro: "Report workflow sealed." };
+  }
+  return { mode: "line", visual: "line", storyId: "default-live-story", metric: d.hero.overview.tertiary, lineSeries: d.revenueSeries, lineMonths: d.revenueMonths, accent: "#22d3ee", secondaryAccent: "#a855f7", narrative: "The selected panel is converted into a focused live data story.", outro: "Panel story complete." };
 }
 
 function Panel({
@@ -1360,7 +1347,7 @@ function Panel({
                   <button type="button" aria-label="Close data story" onClick={() => setStoryOpen(false)}><X size={18} /></button>
                 </div>
                 <Suspense fallback={<div className="story-loading">Preparing Remotion story...</div>}>
-                  <DataStoryPlayer title={title} kicker={kicker} metric={storySpec.metric} mode={storySpec.mode} />
+                  <DataStoryPlayer title={title} kicker={kicker} metric={storySpec.metric} mode={storySpec.mode} visual={storySpec.visual} storyId={storySpec.storyId} narrative={storySpec.narrative} outro={storySpec.outro} rows={storySpec.rows} accent={storySpec.accent} secondaryAccent={storySpec.secondaryAccent} lineSeries={storySpec.lineSeries} lineMonths={storySpec.lineMonths} barSeries={storySpec.barSeries} donutValues={storySpec.donutValues} donutColors={storySpec.donutColors} gaugeValue={storySpec.gaugeValue} />
                 </Suspense>
               </motion.section>
             </motion.div>
@@ -1551,12 +1538,12 @@ function Donut({
   const segmentColors = colors.slice(0, values.length);
 
   // Overlay is shown while the Remotion cinematic plays, then removed.
-  // SVG is ALWAYS rendered — the overlay visually covers it during the animation.
+  // SVG is ALWAYS rendered â€” the overlay visually covers it during the animation.
   const [playerDone, setPlayerDone] = useState(false);
   const markDone = useCallback(() => setPlayerDone(true), []);
   const [hoveredSeg, setHoveredSeg] = useState<number | null>(null);
 
-  // Unique key per mount — forces Remotion Player to start from frame 0 on every
+  // Unique key per mount â€” forces Remotion Player to start from frame 0 on every
   // page visit, even if React tries to reuse an existing Player instance.
   const mountKey = useRef(`${Date.now()}-${Math.random()}`);
 
@@ -1581,7 +1568,7 @@ function Donut({
     <div ref={root} className="donut-layout">
       <div className="donut" role="img" aria-label={`${labels.length}-segment distribution chart`}>
 
-        {/* SVG is always visible — the overlay covers it while the cinematic plays */}
+        {/* SVG is always visible â€” the overlay covers it while the cinematic plays */}
         <svg viewBox="0 0 120 120" aria-hidden="true">
           <circle className="donut-track" cx="60" cy="60" r="44" pathLength="100" />
           {values.map((value, index) => {
@@ -1617,7 +1604,7 @@ function Donut({
 
         <div><strong>100%</strong><span>share</span></div>
 
-        {/* Remotion cinematic overlay — solid bg covers the SVG while playing,
+        {/* Remotion cinematic overlay â€” solid bg covers the SVG while playing,
             then unmounts to reveal the interactive SVG underneath */}
         {!reducedMotion && !playerDone && (
           <div className="donut-player-wrap" aria-hidden="true">
@@ -1734,7 +1721,7 @@ function HeatMap() {
     );
   }, { scope: root, dependencies: [anomalyLens, reducedMotion] });
 
-  // Live scale from replayProgress — no entrance re-trigger
+  // Live scale from replayProgress â€” no entrance re-trigger
   useGSAP(() => {
     if (!root.current) return;
     if (reducedMotion) return;
@@ -1934,25 +1921,67 @@ function RiskMatrix() {
   );
 }
 
-// ── EXECUTIVE PULSE ─────────────────────────────────────────────────────────
+// â”€â”€ EXECUTIVE PULSE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 type ExecTone = "purple" | "cyan" | "pink" | "danger";
 
-const execKpis: Array<{
+type ExecPulseItem = {
   title: string; value: string; label: string; tone: ExecTone;
   icon: typeof Activity; delta: string;
-}> = [
-  { title: "Primary Signal",   value: "$15.66M", label: "Revenue",          tone: "purple", icon: CircleDollarSign, delta: "+18.4%" },
-  { title: "Operational Read", value: "24.0K",   label: "Orders",           tone: "cyan",   icon: Activity,         delta: "+8.4%"  },
-  { title: "Customer Health",  value: "2.79K",   label: "Active Customers", tone: "pink",   icon: Users,            delta: "+3.1%"  },
-  { title: "Churn Risk Index", value: "34.4%",   label: "At Risk",          tone: "danger", icon: TrendingDown,     delta: "-1.8%"  },
-];
+};
+
+function toExecTone(tone?: string): ExecTone {
+  if (tone === "danger") return "danger";
+  if (tone === "cyan" || tone === "green") return "cyan";
+  if (tone === "gold") return "pink";
+  return "purple";
+}
+
+function buildExecutivePulseItems(): ExecPulseItem[] {
+  const [revenue, orders, customers, churn] = dashboardDataState.kpis;
+  return [
+    {
+      title: "Primary Signal",
+      value: revenue?.value ?? dashboardDataState.hero.overview.primary.replace(/\s+revenue$/i, ""),
+      label: revenue?.label ?? "Revenue",
+      tone: toExecTone(revenue?.tone),
+      icon: revenue?.icon ?? CircleDollarSign,
+      delta: revenue?.delta ?? dashboardDataState.hero.overview.tertiary,
+    },
+    {
+      title: "Operational Read",
+      value: orders?.value ?? dashboardDataState.hero.overview.secondary.replace(/\s+orders$/i, ""),
+      label: orders?.label ?? "Orders",
+      tone: toExecTone(orders?.tone),
+      icon: orders?.icon ?? Activity,
+      delta: orders?.delta ?? "Live",
+    },
+    {
+      title: "Customer Health",
+      value: customers?.value ?? dashboardDataState.navStats.segmentation,
+      label: customers?.label ?? "Customers",
+      tone: "pink",
+      icon: customers?.icon ?? Users,
+      delta: customers?.delta ?? "Live",
+    },
+    {
+      title: "Churn Risk Index",
+      value: churn?.value ?? dashboardDataState.navStats.churn,
+      label: churn?.label ?? "Churn",
+      tone: "danger",
+      icon: churn?.icon ?? TrendingDown,
+      delta: churn?.delta ?? "Monitored",
+    },
+  ];
+}
 
 function ExecPulseCard({ title, value, label, tone, icon: Icon, delta }: {
   title: string; value: string; label: string; tone: ExecTone;
   icon: typeof Activity; delta: string;
 }) {
+  const { performanceTier, reducedMotion } = useLivingOS();
   const isNeg = delta.startsWith("-");
   const DeltaIcon = isNeg ? TrendingDown : TrendingUp;
+  const canTilt = performanceTier === "high" && !reducedMotion;
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const rotateX = useTransform(mouseY, [-0.5, 0.5], [8, -8]);
@@ -1982,12 +2011,12 @@ function ExecPulseCard({ title, value, label, tone, icon: Icon, delta }: {
   return (
     <motion.article
       className={`exec-card exec-card-${tone}`}
-      style={{ perspective: 800, rotateX, rotateY, scale: cardScale, y: cardY }}
-      onMouseMove={handleTiltMove}
-      onMouseLeave={handleTiltLeave}
+      style={canTilt ? { perspective: 800, rotateX, rotateY, scale: cardScale, y: cardY } : undefined}
+      onMouseMove={canTilt ? handleTiltMove : undefined}
+      onMouseLeave={canTilt ? handleTiltLeave : undefined}
     >
       <span className="exec-card-glow" aria-hidden="true" />
-      <motion.span className="exec-card-glare" aria-hidden="true" style={{ background: glareStyle }} />
+      <motion.span className="exec-card-glare" aria-hidden="true" style={canTilt ? { background: glareStyle } : undefined} />
       <div className="exec-card-header">
         <span className="exec-card-title"><TextEffect per="word" preset="fade" delay={0.04} speedReveal={4.5} as="span">{title}</TextEffect></span>
         <span className="exec-card-icon"><Icon size={20} /></span>
@@ -2006,6 +2035,7 @@ function ExecPulseCard({ title, value, label, tone, icon: Icon, delta }: {
 function ExecutivePulseSection() {
   const [region, setRegion] = useState("all");
   const [timeframe, setTimeframe] = useState("ytd");
+  const execKpis = buildExecutivePulseItems();
   const tfLabels: Record<string, string> = {
     ytd: "Year to Date", last30: "Last 30 Days", last90: "Last 90 Days",
     q1: "Q1 2026", q2: "Q2 2026",
@@ -2052,7 +2082,7 @@ function ExecutivePulseSection() {
 
       <div className="exec-pulse-chart">
         <div className="exec-pulse-chart-head">
-          <span>Revenue momentum — {tfLabels[timeframe] ?? timeframe}</span>
+          <span>Revenue momentum â€” {tfLabels[timeframe] ?? timeframe}</span>
           <div className="exec-chart-legend">
             <span><i />Revenue</span>
             <span><i />Target</span>
@@ -2065,6 +2095,7 @@ function ExecutivePulseSection() {
 }
 
 function OverviewPage() {
+  const { performanceTier } = useLivingOS();
   return (
     <>
       <ExecutivePulseSection />
@@ -2076,7 +2107,15 @@ function OverviewPage() {
         <Panel title="Live Activity Feed" kicker="Model, inventory, and segment stream" icon={RadioTower}><ActivityFeed /></Panel>
         <Panel title="Monthly Performance" kicker="Revenue and profit by month" icon={BarChart3}><StackedBars values={bars.slice(-7)} labels={months} /></Panel>
         <Panel title="Top Selling Products" kicker="Ranked by total revenue" icon={Crown}><LuxuryTable rows={dashboardDataState.topProductsRows} /></Panel>
-        <Panel title="3D Volume Analysis" kicker="Interactive three-dimensional volume bars" icon={BarChart3}><VolumeBars3D /></Panel>
+        <Panel title="3D Volume Analysis" kicker="Interactive three-dimensional volume bars" icon={BarChart3}>
+          {performanceTier === "minimal" ? (
+            <RevenueBars />
+          ) : (
+            <Suspense fallback={<RevenueBars />}>
+              <VolumeBars3D />
+            </Suspense>
+          )}
+        </Panel>
       </section>
     </>
   );
@@ -2107,8 +2146,8 @@ function SegmentationPage() {
         <Panel title="Customer Lifetime Value" kicker="Average CLV by segment" icon={Gem}><HorizontalBars labels={dashboardDataState.horizontalBarLabels} values={dashboardDataState.horizontalBarValues} /></Panel>
         <Panel title="KMeans Cluster Scatter" kicker="Recency vs monetary, sized by frequency" icon={Brain}><ScatterPlot /></Panel>
         <Panel title="RFM Score Heatmap" kicker="Recency, frequency, monetary heat" icon={Eye}><HeatMap /></Panel>
-        <Panel title="Segment Force Graph" kicker="Live physics — customer topology" icon={RadioTower}><ForceGraph /></Panel>
-        <Panel title="Territory Map" kicker="Voronoi — geographic density zones" icon={Layers3}><VoronoiCanvas /></Panel>
+        <Panel title="Segment Force Graph" kicker="Live physics â€” customer topology" icon={RadioTower}><ForceGraph /></Panel>
+        <Panel title="Territory Map" kicker="Voronoi â€” geographic density zones" icon={Layers3}><VoronoiCanvas /></Panel>
         <Panel className="wide-panel" title="Customer Insights & Playbook" kicker="Recommended action per segment" icon={Sparkles}><SegmentCards /></Panel>
       </section>
     </>
@@ -2213,17 +2252,8 @@ function ReportsPage() {
 }
 
 function MediaStudioPage() {
-  const storyTypes = [
-    "Executive Briefing",
-    "Chart Story",
-    "Operational Replay",
-    "Churn Intelligence",
-    "Demand Forecast",
-    "Inventory Command",
-    "Customer Segment",
-  ];
   const formats = ["1920x1080", "1080x1080", "1080x1920", "1200x628", "3840x2160"];
-  const [storyType, setStoryType] = useState(storyTypes[0]);
+  const [storyType, setStoryType] = useState<MediaStoryType>(MEDIA_STORY_TYPES[0]);
   const [format, setFormat] = useState(formats[0]);
   const [duration, setDuration] = useState(45);
   const [captioned, setCaptioned] = useState(true);
@@ -2247,8 +2277,103 @@ function MediaStudioPage() {
     return () => window.clearInterval(timer);
   }, [rendering]);
 
-  const previewMode = storyType.includes("Inventory") ? "gauge" : storyType.includes("Chart") || storyType.includes("Customer") ? "donut" : storyType.includes("Replay") ? "bars" : "line";
-  const previewMetric = storyType.includes("Churn") ? "-2.6%" : storyType.includes("Inventory") ? "82/100" : storyType.includes("Demand") ? "94.2%" : "+12.6%";
+  const _d = dashboardDataState;
+  const _donutColors = ["#a855f7", "#22d3ee", "#34d399", "#fbbf24", "#f472b6"];
+  const formatMixLabels = ["Customer", "Sales", "Churn", "Forecast", "Inventory"];
+  const formatMixValues = _d.reportMixValues;
+  const parseMetricValue = (value: string) => {
+    const cleaned = value.replace(/[^0-9.-]/g, "");
+    const parsed = Number.parseFloat(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const moduleStoryType =
+    storyType === "Executive Briefing" ? "executive" :
+    storyType === "Customer Segment" ? "customer-segment" :
+    storyType === "Churn Intelligence" ? "churn-intel" :
+    storyType === "Demand Forecast" ? "demand-forecast" :
+    storyType === "Inventory Command" ? "inventory-opt" :
+    storyType === "Analytics Report" ? "analytics-report" :
+    storyType === "Platform Intelligence" ? "platform-intel" :
+    "master-reel";
+
+  const executiveKpis = _d.kpis.slice(0, 4).map((item) => ({
+    label: item.label,
+    value: item.value,
+    delta: item.delta,
+  }));
+  const customerSegments = (_d.segmentLabels.length ? _d.segmentLabels : _d.categoryLabels)
+    .slice(0, 4)
+    .map((label, index) => ({
+      label,
+      value: Number(((_d.segmentValues[index] ?? _d.categoryValues[index] ?? 0)).toFixed(1)),
+      color: _donutColors[index % _donutColors.length],
+    }));
+  const churnRiskTiers = _d.churnKpis.slice(0, 4).map((item, index) => ({
+    label: item.label,
+    count: Math.max(1, Math.round(parseMetricValue(item.value))),
+    pct: Number((parseMetricValue(item.delta) || [14.2, 25.6, 37.4, 22.8][index] || 0).toFixed(1)),
+    color: ["#ef4444", "#f97316", "#fbbf24", "#34d399"][index] ?? "#a855f7",
+  }));
+  const inventorySkus = (_d.horizontalBarLabels.length ? _d.horizontalBarLabels : _d.categoryLabels)
+    .slice(0, 6)
+    .map((label, index) => {
+      const stock = Math.max(10, Math.round(_d.horizontalBarValues[index] ?? _d.categoryValues[index] ?? 50));
+      return {
+        label,
+        stock,
+        reorder: Math.max(15, Math.round(stock * 0.62)),
+      };
+    });
+  const analyticsRows = _d.reportsKpis.slice(0, 4).map((item) => {
+    const deltaValue = parseMetricValue(item.delta);
+    return {
+      label: item.label,
+      val: item.value,
+      trend: deltaValue < 0 ? "down" as const : deltaValue > 0 ? "up" as const : "flat" as const,
+    };
+  });
+  const platformMetrics = [
+    { label: "Executive Revenue", value: _d.navStats.overview, status: "ok" as const },
+    { label: "Customer Coverage", value: _d.navStats.segmentation, status: "ok" as const },
+    { label: "Churn Exposure", value: _d.navStats.churn, status: "warn" as const },
+    { label: "Forecast Confidence", value: _d.navStats.forecasting, status: "ok" as const },
+    { label: "Inventory Health", value: _d.navStats.inventory, status: "ok" as const },
+    { label: "Report Readiness", value: _d.navStats.reports, status: "ok" as const },
+  ];
+  const masterMetrics = [
+    { label: "Revenue", value: _d.navStats.overview, color: "#f59e0b" },
+    { label: "Customers", value: _d.navStats.segmentation, color: "#22d3ee" },
+    { label: "Churn", value: _d.navStats.churn, color: "#ef4444" },
+    { label: "Forecast", value: _d.navStats.forecasting, color: "#34d399" },
+    { label: "Inventory", value: _d.navStats.inventory, color: "#a855f7" },
+    { label: "Reports", value: _d.navStats.reports, color: "#6366f1" },
+  ];
+
+  // Render queue: current selection + next 3 different story types
+  const _queueOthers = MEDIA_STORY_TYPES.filter(t => t !== storyType).slice(0, 3);
+  const queueRows: [string, string, string][] = [
+    [storyType, format, rendering ? `${renderProgress}%` : "Ready"],
+    ..._queueOthers.map(t => [t, "1920x1080", "Available"] as [string, string, string]),
+  ];
+
+  // Scene breakdown driven by the selected composition and live metrics.
+  const _topCategory = _d.categoryValues.length > 0 ? `${_d.categoryValues[0].toFixed(1)}%` : "—";
+  const sceneRows: [string, string, string][] =
+    moduleStoryType === "inventory-opt"
+      ? [["01", "Stock command open", _d.navStats.inventory], ["02", "SKU balance", `${inventorySkus.length} live SKUs`], ["03", "Health gauge", `${_d.inventoryHealthScore}/100`], ["04", "Recovery close", _d.hero.inventory.tertiary]]
+      : moduleStoryType === "customer-segment"
+      ? [["01", "Segment open", _d.navStats.segmentation], ["02", "Cluster spread", `${customerSegments.length} clusters`], ["03", "Share distribution", _topCategory], ["04", "Action close", _d.hero.segmentation.tertiary]]
+      : moduleStoryType === "churn-intel"
+      ? [["01", "Risk scan", _d.navStats.churn], ["02", "Tier reveal", `${churnRiskTiers.length} risk bands`], ["03", "Heat progression", `${_d.heat.length} tracked signals`], ["04", "Retention close", _d.hero.churn.tertiary]]
+      : moduleStoryType === "demand-forecast"
+      ? [["01", "Demand signal", _d.navStats.forecasting], ["02", "Historical run", `${_d.compareSeries.slice(-8).length} points`], ["03", "Forecast extension", `${_d.revenueSeries.slice(-7).length} points`], ["04", "Planning close", _d.hero.forecasting.tertiary]]
+      : moduleStoryType === "analytics-report"
+      ? [["01", "Board open", _d.navStats.reports], ["02", "Report pack", `${analyticsRows.length} report metrics`], ["03", "Line summary", `${_d.revenueSeries.length} timeline points`], ["04", "Export close", _d.hero.reports.tertiary]]
+      : moduleStoryType === "platform-intel"
+      ? [["01", "Control open", _d.hero.overview.tertiary], ["02", "System status", `${platformMetrics.length} live controls`], ["03", "Platform pulse", _d.navStats.reports], ["04", "Operations close", _d.hero.reports.tertiary]]
+      : moduleStoryType === "master-reel"
+      ? [["01", "Brand open", "RetailPulse"], ["02", "Module sweep", `${MEDIA_STORY_TYPES.length - 1} modules`], ["03", "Signal montage", _d.navStats.overview], ["04", "Showcase close", _d.hero.overview.tertiary]]
+      : [["01", "Executive open", _d.navStats.overview], ["02", "KPI reveal", `${executiveKpis.length} hero metrics`], ["03", "Trend bars", `${_d.bars.length} signals`], ["04", "Command close", _d.hero.overview.tertiary]];
 
   return (
     <>
@@ -2260,8 +2385,8 @@ function MediaStudioPage() {
 
           <label>
             <span>Composition</span>
-            <select value={storyType} onChange={(event) => setStoryType(event.target.value)} aria-label="Select Remotion composition">
-              {storyTypes.map((type) => <option key={type}>{type}</option>)}
+            <select value={storyType} onChange={(event) => setStoryType(event.target.value as MediaStoryType)} aria-label="Select Remotion composition">
+              {MEDIA_STORY_TYPES.map((type) => <option key={type}>{type}</option>)}
             </select>
           </label>
 
@@ -2304,7 +2429,7 @@ function MediaStudioPage() {
             ) : (
               <>
                 <CloudDownload size={17} />
-                {rendering ? `Rendering ${renderProgress}%` : "Generate Executive Video"}
+                {rendering ? `Rendering ${renderProgress}%` : "Generate Play Data Video"}
               </>
             )}
           </button>
@@ -2316,37 +2441,56 @@ function MediaStudioPage() {
             <em>{captioned ? "Captions on" : "Captions off"} / {narration ? "Narration queued" : "Silent preview"}</em>
           </div>
           <Suspense fallback={<div className="story-loading">Loading Remotion preview...</div>}>
-            <DataStoryPlayer title={storyType} kicker="RetailPulse media studio" metric={previewMetric} mode={previewMode} />
+              <ModuleStoryPlayer
+                storyType={moduleStoryType}
+                durationSeconds={duration}
+                captionsEnabled={captioned}
+                narrationEnabled={narration}
+                previewFormat={format}
+                ebTitle="RetailPulse Executive Briefing"
+                ebKpis={executiveKpis}
+                ebBarSeries={_d.bars}
+              csTitle="RetailPulse Customer Segments"
+              csSegments={customerSegments}
+              ciTitle="RetailPulse Churn Intelligence"
+              ciRiskTiers={churnRiskTiers}
+              ciHeatValues={_d.heat}
+              dfTitle="RetailPulse Demand Forecast"
+              dfHistorical={_d.compareSeries.slice(-8)}
+              dfForecast={_d.revenueSeries.slice(-7)}
+              dfMonths={_d.revenueMonths.slice(-15)}
+              ioTitle="RetailPulse Inventory Command"
+              ioSkus={inventorySkus}
+              ioHealthScore={_d.inventoryHealthScore}
+              arTitle="RetailPulse Analytics Report"
+              arLineSeries={_d.revenueSeries.slice(-12)}
+              arMonths={_d.revenueMonths.slice(-12)}
+              arRows={analyticsRows}
+              piTitle="RetailPulse Platform Intelligence"
+              piMetrics={platformMetrics}
+              mrBrandName="RetailPulse"
+              mrKeyMetrics={masterMetrics}
+            />
           </Suspense>
         </div>
       </section>
 
       <KpiGrid items={[
-        { label: "Story Scenes", value: "7", delta: "Live", icon: Film, tone: "violet" },
+        { label: "Story Scenes", value: `${MEDIA_STORY_TYPES.length}`, delta: "Live", icon: Film, tone: "violet" },
         { label: "Render Queue", value: rendering ? `${renderProgress}%` : "Ready", delta: format, icon: CloudDownload, tone: "cyan" },
-        { label: "Engagement Lift", value: "+18.4%", delta: "+4.2%", icon: TrendingUp, tone: "green" },
+        { label: "Export Readiness", value: _d.hero.reports.tertiary, delta: _d.hero.reports.secondary, icon: TrendingUp, tone: "green" },
         { label: "Caption Coverage", value: captioned ? "100%" : "0%", delta: captioned ? "On" : "Off", icon: Table2, tone: "gold" },
       ]} />
 
       <section className="dashboard-grid">
         <Panel title="Render Queue" kicker="Export workflow" icon={CloudDownload}>
-          <LuxuryTable rows={[
-            [storyType, format, rendering ? `${renderProgress}%` : "Ready"],
-            ["Weekly Board Pack", "1920x1080", "Rendered"],
-            ["Inventory Replay", "1080x1920", "Draft"],
-            ["Churn Brief", "1200x628", "Preview"],
-          ]} />
+          <LuxuryTable rows={queueRows} />
         </Panel>
         <Panel title="Story Scenes" kicker="Current composition sequence" icon={Film}>
-          <LuxuryTable rows={[
-            ["01", "Opening signal", "Revenue and health"],
-            ["02", "Chart reveal", "Trend + anomaly"],
-            ["03", "Operational read", "Forecast and stock"],
-            ["04", "Executive close", "Recommended action"],
-          ]} />
+          <LuxuryTable rows={sceneRows} />
         </Panel>
         <Panel className="wide-panel" title="Video Engagement Forecast" kicker="Projected watch-through and executive attention" icon={LineChart}><RevenueLine /><RevenueBars /></Panel>
-        <Panel title="Format Performance Mix" kicker="Landscape, square, vertical, and social cuts" icon={Layers3}><Donut labels={["16:9", "1:1", "9:16", "Social", "4K"]} /></Panel>
+        <Panel title="Story Data Mix" kicker="Live composition weight by active data pack" icon={Layers3}><Donut labels={formatMixLabels} values={formatMixValues} /></Panel>
         <Panel title="Scene Timing Balance" kicker="Intro, chart reveal, insight, and close" icon={BarChart3}><StackedBars /></Panel>
       </section>
     </>
@@ -2409,8 +2553,8 @@ function SettingsPage({ theme, setTheme }: { theme: ThemeMode; setTheme: (theme:
       </AccordionPanel>
       <AccordionPanel title="Forecast Settings" kicker="Configuration" icon={LineChart}>
         <Control title="Default horizon" value="30 days" />
-        <Control title="MAPE target" value="12%" />
-        <Control title="Engine" value="Prophet + fallback" />
+        <Control title="Latest verified MAPE" value="22.53%" />
+        <Control title="Engine" value="Prophet + regressors" />
       </AccordionPanel>
       <AccordionPanel title="User Management" kicker="Access control" icon={Lock}>
         <LuxuryTable rows={[["Rashad", "Platform Integration", "Owner"], ["Kaviya", "Data Engineering", "Editor"], ["Rohinee", "Customer Intelligence", "Editor"], ["Sachin", "Forecasting", "Analyst"]]} />
@@ -2505,11 +2649,11 @@ function Toast({ message }: { message: string }) {
 // Hero panel text stagger variants (transitions-dev 18-texts-reveal pattern)
 const heroContainerVariants = {
   initial: {},
-  animate: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
+  animate: { transition: { staggerChildren: 0.045, delayChildren: 0.02 } },
 };
 const heroItemVariants = {
-  initial: { opacity: 0, y: 18, filter: "blur(4px)" },
-  animate: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.48, ease: [0.22, 1, 0.36, 1] as const } },
+  initial: { opacity: 0, y: 14, filter: "blur(1.5px)" },
+  animate: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const } },
 };
 
 // Direction-aware page slide: matches transitions-dev page side-by-side token values.
@@ -2561,9 +2705,11 @@ function Dashboard() {
   heat = liveDashboardData.heat;
   months = liveDashboardData.revenueMonths;
   barMonths = liveDashboardData.barMonths;
+  const overviewStat = compactMetricLabel(pageMeta.overview.primary, ["revenue"]);
+  const segmentationStat = compactMetricLabel(pageMeta.segmentation.primary, ["profiled", "customers"]);
   const active = navItems.find((item) => item.id === activePage)!;
 
-  // Track direction for slide: 1 = forward (→), -1 = backward (←)
+  // Track direction for slide: 1 = forward (â†’), -1 = backward (â†)
   const prevPageRef = useRef<PageId>(activePage);
   const directionRef = useRef<1 | -1>(1);
   useEffect(() => {
@@ -2574,8 +2720,8 @@ function Dashboard() {
   }, [activePage]);
 
   useEffect(() => {
-    const workspace = root.current?.querySelector<HTMLElement>(".workspace");
-    workspace?.scrollTo({ top: 0, behavior: "auto" });
+    const workspaceBody = root.current?.querySelector<HTMLElement>(".workspace-body");
+    workspaceBody?.scrollTo({ top: 0, behavior: "auto" });
   }, [activePage]);
 
   useEffect(() => {
@@ -2609,8 +2755,9 @@ function Dashboard() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  // Merged: background gradient + scene parallax + cursor spotlight — single RAF-throttled handler
+  // Merged: background gradient + scene parallax + cursor spotlight â€” single RAF-throttled handler
   useEffect(() => {
+    if (performanceTier === "minimal") return;
     const shell = root.current;
     const scene = root.current?.querySelector<HTMLElement>(".scene-layer") ?? null;
     const workspace = root.current?.querySelector<HTMLElement>(".workspace") ?? null;
@@ -2643,7 +2790,7 @@ function Dashboard() {
       window.removeEventListener("mousemove", handleMouseMove);
       if (rafId !== null) cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [performanceTier]);
 
   // CSS Houdini paint worklet registration
   useEffect(() => {
@@ -2676,62 +2823,72 @@ function Dashboard() {
   };
 
   return (
-    <main ref={root} className={`app-shell theme-${theme} density-${density} ${anomalyLens ? "anomaly-lens" : ""}`}>
+    <main ref={root} className={`app-shell theme-${theme} density-${density} perf-${performanceTier} ${anomalyLens ? "anomaly-lens" : ""}`}>
       <InkReveal trigger={pageChangeCounter} />
-      <Sidebar activePage={activePage} setActivePage={handleSetActivePage} open={navOpen} setOpen={setNavOpen} />
+      <Sidebar
+        activePage={activePage}
+        setActivePage={handleSetActivePage}
+        open={navOpen}
+        setOpen={setNavOpen}
+        items={navItems}
+        overviewStat={overviewStat}
+        segmentationStat={segmentationStat}
+      />
       <section className="workspace">
         <Topbar page={active} setNavOpen={setNavOpen} setCommandOpen={setCommandOpen} setAlertsOpen={setAlertsOpen} />
-        <AnimatePresence mode="wait">
-          {loading ? (
-            <motion.div
-              key="skeleton"
-              initial={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.2 } }}
-            >
-              <SkeletonDashboard />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="content"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.24, delay: 0.04, ease: PAGE_EASE } }}
-            >
-              <HeroPanel
-                page={active}
-                onInsight={() => setToast(`${active.label} insight generated from the latest model snapshot.`)}
-                onRefine={() => setCommandOpen(true)}
-              />
-              <OperatingDock />
-              <AnimatePresence mode="wait" custom={directionRef.current}>
-                <motion.div
-                  className="page-content"
-                  key={activePage}
-                  custom={directionRef.current}
-                  variants={pageVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  drag="x"
-                  dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.12}
-                  onDragEnd={(_e, info) => {
-                    const pageIds = navItems.map((n) => n.id);
-                    const currentIndex = pageIds.indexOf(activePage);
-                    if (info.velocity.x < -400 && currentIndex < pageIds.length - 1) {
-                      directionRef.current = 1;
-                      handleSetActivePage(pageIds[currentIndex + 1]);
-                    } else if (info.velocity.x > 400 && currentIndex > 0) {
-                      directionRef.current = -1;
-                      handleSetActivePage(pageIds[currentIndex - 1]);
-                    }
-                  }}
-                >
-                  {renderPage()}
-                </motion.div>
-              </AnimatePresence>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div className="workspace-body">
+          <AnimatePresence mode="wait">
+            {loading ? (
+              <motion.div
+                key="skeleton"
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0, transition: { duration: 0.2 } }}
+              >
+                <SkeletonDashboard />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="content"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.24, delay: 0.04, ease: PAGE_EASE } }}
+              >
+                <HeroPanel
+                  page={active}
+                  onInsight={() => setToast(`${active.label} insight generated from the latest model snapshot.`)}
+                  onRefine={() => setCommandOpen(true)}
+                />
+                <OperatingDock />
+                <AnimatePresence mode="wait" custom={directionRef.current}>
+                  <motion.div
+                    className="page-content"
+                    key={activePage}
+                    custom={directionRef.current}
+                    variants={pageVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.12}
+                    onDragEnd={(_e, info) => {
+                      const pageIds = navItems.map((n) => n.id);
+                      const currentIndex = pageIds.indexOf(activePage);
+                      if (info.velocity.x < -400 && currentIndex < pageIds.length - 1) {
+                        directionRef.current = 1;
+                        handleSetActivePage(pageIds[currentIndex + 1]);
+                      } else if (info.velocity.x > 400 && currentIndex > 0) {
+                        directionRef.current = -1;
+                        handleSetActivePage(pageIds[currentIndex - 1]);
+                      }
+                    }}
+                  >
+                    {renderPage()}
+                  </motion.div>
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </section>
       <CommandModal open={commandOpen} onClose={() => setCommandOpen(false)} setActivePage={handleSetActivePage} />
       <AlertsDrawer open={alertsOpen} onClose={() => setAlertsOpen(false)} />

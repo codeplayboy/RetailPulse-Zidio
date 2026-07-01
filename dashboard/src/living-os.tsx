@@ -153,53 +153,16 @@ export function useLivingOS() {
   return context;
 }
 
-function formatAnimatedValue(template: string, value: number) {
-  const match = template.match(/[+-]?[\d,.]+/);
-  if (!match) return template;
-
-  const source = match[0];
-  const decimals = source.includes(".") ? source.split(".")[1].length : 0;
-  const useGrouping = source.includes(",");
-  const signed = source.startsWith("+");
-  const formatted = value.toLocaleString(undefined, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-    useGrouping,
-  });
-
-  return template.replace(source, `${signed && value >= 0 ? "+" : ""}${formatted}`);
-}
-
 export function AnimatedValue({ value, className }: { value: string; className?: string }) {
   const node = useRef<HTMLElement>(null);
-  const current = useRef(0);
   const { reducedMotion } = useLivingOS();
   const match = value.match(/[+-]?[\d,.]+/);
   const target = match ? Number(match[0].replace(/,/g, "")) : Number.NaN;
 
   useGSAP(
     () => {
-      if (!node.current || Number.isNaN(target)) return;
-      if (reducedMotion) {
-        node.current.textContent = value;
-        current.current = target;
-        return;
-      }
-
-      const counter = { value: current.current };
-      const tween = gsap.to(counter, {
-        value: target,
-        duration: 0.85,
-        ease: "power3.out",
-        onUpdate: () => {
-          if (node.current) node.current.textContent = formatAnimatedValue(value, counter.value);
-        },
-        onComplete: () => {
-          current.current = target;
-          if (node.current) node.current.textContent = value;
-        },
-      });
-      return () => tween.kill();
+      if (!node.current) return;
+      node.current.textContent = value;
     },
     { dependencies: [target, value, reducedMotion] }
   );
@@ -212,7 +175,7 @@ export function AnimatedValue({ value, className }: { value: string; className?:
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 200, damping: 22, delay: 0.05 }}
     >
-      {Number.isNaN(target) ? value : formatAnimatedValue(value, 0)}
+      {value}
     </motion.strong>
   );
 }

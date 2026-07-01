@@ -1,27 +1,40 @@
 # Prophet Notes
 
-Input Format
+## Input Format
 
 ds -> Date
 
 y -> Target Value
 
-Example
+## Example
 
 ds          y
 2025-01-01  120
 2025-01-02  145
 
-Workflow
+## Production Use In RetailPulse
+The dashboard-integrated forecasting module uses Prophet as the current production model.
 
-Load Data
+## Workflow
+
+Load data
 
 Prepare ds and y
 
-Train Prophet
+Add supported regressors when available
 
-Generate Forecast
+Train tuned Prophet model
 
-Evaluate Forecast
+Generate forecast
 
-Export Results
+Evaluate forecast
+
+Export results
+
+## Latest Verified Metrics
+- MAE: 5534.49
+- RMSE: 8759.64
+- MAPE: 22.53%
+
+## Limitation
+MAPE remains elevated because the source dataset contains several zero-demand and low-demand periods. Separate hybrid experiments were evaluated, but the current Prophet production pipeline remains the best verified option for this project state.

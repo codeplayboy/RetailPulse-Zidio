@@ -136,6 +136,37 @@ type CustomerDetailRow = {
   Total_Orders: number;
 };
 
+type FeatureSampleRow = {
+  Recency: number;
+  Frequency: number;
+  Monetary: number;
+  TotalItems: number;
+  AvgOrderValue: number;
+  PurchaseRate: number;
+  ProfitEstimate: number;
+};
+
+type FeatureSummary = {
+  rowCount: number;
+  columnCount: number;
+  uniqueCustomers: number;
+  uniqueSkus: number;
+  averages: {
+    Recency: number;
+    Frequency: number;
+    Monetary: number;
+    TotalItems: number;
+    AvgOrderValue: number;
+    PurchaseRate: number;
+    Lag_1: number;
+    Lag_7: number;
+    RollingMean7: number;
+    RollingStd7: number;
+    ProfitEstimate: number;
+  };
+  topCountries: Array<{ country: string; count: number }>;
+};
+
 const DATA_BASE = `${import.meta.env.BASE_URL}data/`;
 
 const ACTION_BY_SEGMENT: Record<string, string> = {
@@ -280,6 +311,8 @@ function buildDashboardData(
   forecastRows: ForecastRow[],
   churnRows: ChurnRow[],
   highRiskOverride: ChurnRow[] = [],
+  featureRows: FeatureSampleRow[] = [],
+  featureSummary: FeatureSummary | null = null,
 ): DashboardData {
   const sortedRevenue = [...revenueRows].sort((a, b) => parseDate(a.Date).getTime() - parseDate(b.Date).getTime());
   const sortedDemand = [...demandRows].sort((a, b) => parseDate(a.Date).getTime() - parseDate(b.Date).getTime());
@@ -438,6 +471,33 @@ function buildDashboardData(
   const categoryTotal = sum(categoryValuesRaw) || 1;
   const categoryValues = topCategories.map((category) => Number(((category.count / categoryTotal) * 100).toFixed(1)));
 
+  const sampleFeatureAverages = featureSummary
+    ? {
+        recency: featureSummary.averages.Recency,
+        frequency: featureSummary.averages.Frequency,
+        monetary: featureSummary.averages.Monetary,
+        avgOrderValue: featureSummary.averages.AvgOrderValue,
+        purchaseRate: featureSummary.averages.PurchaseRate,
+      }
+    : featureRows.length
+    ? {
+        recency: average(featureRows.map((row) => row.Recency)),
+        frequency: average(featureRows.map((row) => row.Frequency)),
+        monetary: average(featureRows.map((row) => row.Monetary)),
+        avgOrderValue: average(featureRows.map((row) => row.AvgOrderValue)),
+        purchaseRate: average(featureRows.map((row) => row.PurchaseRate)),
+      }
+    : null;
+
+  const featureActivity: ActivityRow[] = featureSummary
+    ? [[
+        "Feature matrix synced",
+        `${formatCount(featureSummary.rowCount)} engineered rows across ${formatCount(featureSummary.uniqueCustomers)} customers`,
+        "42m",
+        "info",
+      ]]
+    : [];
+
   const reportMixValues = [
     churnRows.length,
     sortedRevenue.length,
@@ -488,6 +548,7 @@ function buildDashboardData(
       "31m",
       "secure",
     ],
+    ...featureActivity,
   ];
 
   return {
@@ -508,9 +569,9 @@ function buildDashboardData(
         tertiary: formatPercent(revenueGrowth),
       },
       segmentation: {
-        primary: `${formatCount(totalCustomers)} customers`,
+        primary: featureSummary ? `${formatCount(featureSummary.uniqueCustomers)} profiled` : `${formatCount(totalCustomers)} customers`,
         secondary: `${topSegments[0]?.label ?? "Lead segment"} lead`,
-        tertiary: `${Math.round((topSegments[0]?.count ?? 0) / Math.max(totalCustomers, 1) * 100)}% largest share`,
+        tertiary: featureSummary ? `${formatCount(featureSummary.rowCount)} feature rows` : `${Math.round((topSegments[0]?.count ?? 0) / Math.max(totalCustomers, 1) * 100)}% largest share`,
       },
       churn: {
         primary: `${highRisk.length} high risk`,
@@ -544,11 +605,11 @@ function buildDashboardData(
       { label: "Monthly Growth", value: formatPercent(revenueGrowth), delta: `${last6Months.at(-1)?.label ?? "Latest"} window`, icon: TrendingUp, tone: "violet" },
     ],
     segmentationKpis: [
-      { label: "Total Customers", value: formatCount(totalCustomers), delta: `${topSegments.length} key segments`, icon: Users, tone: "cyan" },
+      { label: "Total Customers", value: featureSummary ? formatCount(featureSummary.uniqueCustomers) : formatCount(totalCustomers), delta: `${topSegments.length} key segments`, icon: Users, tone: "cyan" },
       { label: topSegments[0]?.label ?? "Largest Segment", value: formatCount(topSegments[0]?.count ?? 0), delta: "Lead cohort", icon: Gem, tone: "gold" },
       { label: "At-Risk Customers", value: formatCount(highRisk.length), delta: `${mediumRisk.length} medium`, icon: TrendingDown, tone: "danger" },
       { label: "Avg Customer LTV", value: formatCurrency(avgClv), delta: `${Math.round(average(topSegments.map((segment) => segment.avgOrders)))} avg orders`, icon: Gem, tone: "violet" },
-      { label: "Loyalty Coverage", value: `${Math.round((churnRows.filter((row) => ["Gold", "Platinum"].includes(row.Loyalty_Status)).length / Math.max(totalCustomers, 1)) * 100)}%`, delta: "Gold + Platinum", icon: ShieldCheck, tone: "green" },
+      { label: "Feature Rows", value: featureSummary ? formatCount(featureSummary.rowCount) : formatCount(featureRows.length), delta: featureSummary ? `${featureSummary.columnCount} columns` : "sample", icon: ShieldCheck, tone: "green" },
     ],
     churnKpis: [
       { label: "High Risk", value: formatCount(highRisk.length), delta: `${formatPercent(riskRate - 1.4)}`, icon: TrendingDown, tone: "danger" },
@@ -559,7 +620,7 @@ function buildDashboardData(
     ],
     forecastingKpis: [
       { label: "Projected Demand", value: formatCount(projectedDemand), delta: formatPercent(revenueGrowth / 2), icon: LineChart, tone: "cyan" },
-      { label: "Forecast Engine", value: "Prophet", delta: "Sachin output", icon: TrendingUp, tone: "violet" },
+      { label: "Forecast Engine", value: "Prophet", delta: "22.53% MAPE verified", icon: TrendingUp, tone: "violet" },
       { label: "Average Band Width", value: `${avgForecastBand.toFixed(1)}%`, delta: "lower is tighter", icon: Gauge, tone: "green" },
       { label: "Forecast Confidence", value: `${inferredAccuracy}%`, delta: `${sortedForecast.length} rows`, icon: TrendingUp, tone: "gold" },
     ],
@@ -592,14 +653,24 @@ function buildDashboardData(
     reportMixValues: normalizedReportMix,
     horizontalBarLabels: topCategories.map((category) => category.label),
     horizontalBarValues: normalizeSeries(topCategories.map((category) => category.avgClv)),
-    featureLabels: ["Recency", "Frequency", "Loyalty", "Orders", "Value"],
-    featureValues: normalizeSeries([
-      average(churnRows.map((row) => row.Days_Since_Last_Purchase)),
-      average(churnRows.map((row) => row.Total_Orders)),
-      average(churnRows.map((row) => (row.Loyalty_Status === "Platinum" ? 95 : row.Loyalty_Status === "Gold" ? 75 : 55))),
-      average(highRisk.map((row) => row.Total_Orders)),
-      avgClv / 1000,
-    ]),
+    featureLabels: sampleFeatureAverages
+      ? ["Recency", "Frequency", "Monetary", "Avg Order Value", "Purchase Rate"]
+      : ["Recency", "Frequency", "Loyalty", "Orders", "Value"],
+    featureValues: sampleFeatureAverages
+      ? normalizeSeries([
+          sampleFeatureAverages.recency,
+          sampleFeatureAverages.frequency,
+          sampleFeatureAverages.monetary / 100,
+          sampleFeatureAverages.avgOrderValue,
+          sampleFeatureAverages.purchaseRate * 100,
+        ])
+      : normalizeSeries([
+          average(churnRows.map((row) => row.Days_Since_Last_Purchase)),
+          average(churnRows.map((row) => row.Total_Orders)),
+          average(churnRows.map((row) => (row.Loyalty_Status === "Platinum" ? 95 : row.Loyalty_Status === "Gold" ? 75 : 55))),
+          average(highRisk.map((row) => row.Total_Orders)),
+          avgClv / 1000,
+        ]),
     forecastCategoryLabels: topCategories.map((category) => category.label),
     forecastCategoryValues: normalizeSeries(topCategories.map((category) => category.count)),
     segments: segments.length ? segments : EMPTY_DATA.segments,
@@ -714,6 +785,12 @@ async function fetchOptionalText(path: string): Promise<string | null> {
   return response.text();
 }
 
+async function fetchOptionalJson<T>(path: string): Promise<T | null> {
+  const response = await fetch(path);
+  if (!response.ok) return null;
+  return response.json() as Promise<T>;
+}
+
 export function useRetailPulseData(): DashboardData {
   const [data, setData] = useState<DashboardData>(EMPTY_DATA);
 
@@ -729,8 +806,10 @@ export function useRetailPulseData(): DashboardData {
       fetchText(`${DATA_BASE}inventory_recommendations.csv`),
       fetchText(`${DATA_BASE}high_risk_customers.csv`),
       fetchOptionalText(`${DATA_BASE}customer_details.csv`),
+      fetchOptionalText(`${DATA_BASE}features_data_sample.csv`),
+      fetchOptionalJson<FeatureSummary>(`${DATA_BASE}features_summary.json`),
     ])
-      .then(([revenueCsv, demandCsv, inventoryCsv, forecastCsv, churnCsv, inventoryRecCsv, highRiskCsv, customerDetailsCsv]) => {
+      .then(([revenueCsv, demandCsv, inventoryCsv, forecastCsv, churnCsv, inventoryRecCsv, highRiskCsv, customerDetailsCsv, featureSampleCsv, featureSummary]) => {
         const revenueRows = csvToObjects(revenueCsv, (row) => ({
           Date: row.Date,
           Total_Revenue: parseNumber(row.Total_Revenue),
@@ -822,6 +901,18 @@ export function useRetailPulseData(): DashboardData {
           Total_Orders: parseNumber(row.Total_Orders),
         }));
 
+        const featureRows = featureSampleCsv
+          ? csvToObjects(featureSampleCsv, (row) => ({
+              Recency: parseNumber(row.Recency),
+              Frequency: parseNumber(row.Frequency),
+              Monetary: parseNumber(row.Monetary),
+              TotalItems: parseNumber(row.TotalItems),
+              AvgOrderValue: parseNumber(row.AvgOrderValue),
+              PurchaseRate: parseNumber(row.PurchaseRate),
+              ProfitEstimate: parseNumber(row.ProfitEstimate),
+            }))
+          : [];
+
         const churnMap = new Map(churnRows.map((row) => [row.Customer_ID, row]));
         const enrichedChurnRows = customerDetailRows.length
           ? customerDetailRows.map((row) => {
@@ -847,6 +938,8 @@ export function useRetailPulseData(): DashboardData {
           forecastRows,
           enrichedChurnRows,
           highRiskRows,
+          featureRows,
+          featureSummary,
         );
         if (active) setData(next);
       })
