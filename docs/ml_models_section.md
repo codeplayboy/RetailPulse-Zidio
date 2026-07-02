@@ -85,11 +85,11 @@ The production configuration uses a conservative and stable parameter set:
 
 The trained Prophet model was evaluated on a holdout period using the production pipeline. Verified metrics are:
 
-- MAPE: 17.53%
-- MAE: 7589.93
-- RMSE: 14478.21
+- MAPE: 22.53%
+- MAE: 5534.49
+- RMSE: 8759.64
 
-These values indicate that the forecasting module is operationally useful for planning decisions while leaving room for further tuning and feature enhancement.
+These values indicate that the forecasting module is operationally useful for planning decisions while leaving room for further tuning and feature enhancement. The MAPE remains above the original target because the demand dataset contains zero-demand and very low-demand periods, which make percentage-based error metrics more sensitive.
 
 ---
 
