@@ -1,0 +1,48 @@
+{
+  "sourceFile": "C:\\Users\\rasha\\Downloads\\features_data.csv",
+  "rowCount": 779424,
+  "columnCount": 34,
+  "uniqueCustomers": 5878,
+  "uniqueSkus": 4631,
+  "averages": {
+    "Recency": 1.0,
+    "Frequency": 33.3995,
+    "Monetary": 20790.1838,
+    "TotalItems": 11898.706,
+    "AvgOrderValue": 22.2918,
+    "PurchaseRate": 1015.508,
+    "Lag_1": 13.2478,
+    "Lag_7": 12.7615,
+    "RollingMean7": 13.6132,
+    "RollingStd7": 16.4138,
+    "ProfitEstimate": 6.6875
+  },
+  "topCountries": [
+    {
+      "country": "United Kingdom",
+      "count": 700387
+    },
+    {
+      "country": "Germany",
+      "count": 16432
+    },
+    {
+      "country": "EIRE",
+      "count": 15565
+    },
+    {
+      "country": "France",
+      "count": 13511
+    },
+    {
+      "country": "Netherlands",
+      "count": 5085
+    }
+  ],
+  "topInvoiceMonths": [
+    {
+      "month": "1970-01",
+      "count": 779424
+    }
+  ]
+}
