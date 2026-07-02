@@ -35,3 +35,12 @@ dashboard/anim-test*.png
 dashboard/*.tsbuildinfo
 dashboard/vite.config.js
 dashboard/vite.config.d.ts
+
+# Local preview and documentation scratch artifacts
+dashboard-dev.log
+dashboard-preview*.log
+docs/rendered_report/
+tools/LibreOfficeExtracted/
+tools/LibreOfficePortable/
+tools/__pycache__/
+data/processed/features_data.csv
