@@ -6,13 +6,27 @@ functions that can be used in production pipelines.
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import joblib
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 __all__ = [
@@ -385,6 +399,87 @@ def load_churn_model_artifacts(
     }
 
 
+def _evaluate_churn_model(
+    model: LogisticRegression,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    output_dir: Union[str, Path],
+) -> Dict[str, Any]:
+    """Evaluate the trained churn model and persist metrics and a confusion matrix plot."""
+    predictions = model.predict(X_test)
+
+    accuracy = accuracy_score(y_test, predictions)
+    precision = precision_score(y_test, predictions, zero_division=0)
+    recall = recall_score(y_test, predictions, zero_division=0)
+    f1 = f1_score(y_test, predictions, zero_division=0)
+    roc_auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
+    confusion_mat = confusion_matrix(y_test, predictions)
+    report = classification_report(y_test, predictions, zero_division=0)
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    confusion_matrix_path = output_path / "churn_confusion_matrix.png"
+    metrics_path = output_path / "churn_metrics.json"
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    image = ax.imshow(confusion_mat, interpolation="nearest", cmap=plt.cm.Blues)
+    ax.set_title("Churn Confusion Matrix")
+    ax.set_xlabel("Predicted Label")
+    ax.set_ylabel("True Label")
+    ax.set_xticks([0, 1])
+    ax.set_yticks([0, 1])
+    ax.set_xticklabels(["No", "Yes"])
+    ax.set_yticklabels(["No", "Yes"])
+
+    for row_index in range(confusion_mat.shape[0]):
+        for col_index in range(confusion_mat.shape[1]):
+            ax.text(
+                col_index,
+                row_index,
+                confusion_mat[row_index, col_index],
+                ha="center",
+                va="center",
+                color="white" if confusion_mat[row_index, col_index] > confusion_mat.max() / 2 else "black",
+            )
+
+    fig.colorbar(image, ax=ax)
+    fig.tight_layout()
+    fig.savefig(confusion_matrix_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+    metrics = {
+        "Accuracy": float(accuracy),
+        "Precision": float(precision),
+        "Recall": float(recall),
+        "F1 Score": float(f1),
+        "ROC-AUC": float(roc_auc),
+    }
+
+    with metrics_path.open("w", encoding="utf-8") as handle:
+        json.dump(metrics, handle, indent=2)
+
+    print("=========================")
+    print("CHURN MODEL PERFORMANCE")
+    print("=========================")
+    print(f"Accuracy : {accuracy:.4f}")
+    print(f"Precision : {precision:.4f}")
+    print(f"Recall : {recall:.4f}")
+    print(f"F1 Score : {f1:.4f}")
+    print(f"ROC-AUC : {roc_auc:.4f}")
+    print("")
+    print("Classification Report")
+    print(report)
+    print(f"Confusion Matrix saved to {confusion_matrix_path}")
+    print(f"Metrics saved to {metrics_path}")
+
+    return {
+        "metrics": metrics,
+        "confusion_matrix_path": confusion_matrix_path,
+        "metrics_path": metrics_path,
+    }
+
+
 def train_churn_model_artifacts(
     df: pd.DataFrame,
     feature_columns: Optional[Sequence[str]] = None,
@@ -397,11 +492,24 @@ def train_churn_model_artifacts(
     feature_df = build_churn_feature_frame(df, feature_columns=feature_columns)
     labels = df["Churn"].eq("Yes").astype(int)
 
-    scaler = StandardScaler()
-    scaled_features = scaler.fit_transform(feature_df)
+    X_train, X_test, y_train, y_test = train_test_split(
+        feature_df,
+        labels,
+        test_size=0.2,
+        random_state=42,
+        stratify=labels,
+    )
 
-    churn_model = LogisticRegression(max_iter=1000, random_state=42)
-    churn_model.fit(scaled_features, labels)
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    churn_model = LogisticRegression(
+        max_iter=1000,
+        random_state=42,
+        class_weight="balanced",
+    )
+    churn_model.fit(X_train_scaled, y_train)
 
     saved_paths = save_churn_model_artifacts(
         churn_model,
@@ -412,9 +520,17 @@ def train_churn_model_artifacts(
         feature_columns_path=feature_columns_path,
     )
 
+    evaluation_results = _evaluate_churn_model(
+        churn_model,
+        X_test_scaled,
+        y_test,
+        Path(__file__).resolve().parent.parent / "outputs",
+    )
+
     return {
         "model": churn_model,
         "scaler": scaler,
         "feature_columns": feature_df.columns.tolist(),
         "paths": saved_paths,
+        "evaluation": evaluation_results,
     }
