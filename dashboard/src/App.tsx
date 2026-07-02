@@ -706,6 +706,74 @@ function usePageAnimation(root: React.RefObject<HTMLDivElement | null>, deps: un
   }, { scope: root, dependencies: deps, revertOnUpdate: true });
 }
 
+function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unknown[]) {
+  useEffect(() => {
+    const scope = root.current;
+    if (!scope) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const chartSelector = [
+      ".revenue-line-wrapper",
+      ".revenue-bars",
+      ".combo-bars",
+      ".donut-layout",
+      ".stacked-bars",
+      ".hbars",
+      ".heat-grid",
+      ".scatter",
+      ".gauge",
+      ".lux-table",
+      ".activity-feed"
+    ].join(", ");
+
+    if (reduceMotion) {
+      scope.querySelectorAll<HTMLElement>(".panel").forEach((panel) => {
+        if (!panel.querySelector(chartSelector)) return;
+        panel.classList.add("chart-bloom", "is-bloomed");
+      });
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const panel = entry.target as HTMLElement;
+          panel.classList.add("is-bloomed");
+          observer.unobserve(panel);
+        });
+      },
+      { root: null, threshold: 0.22, rootMargin: "0px 0px -8% 0px" }
+    );
+
+    const tagPanels = () => {
+      const panels = Array.from(scope.querySelectorAll<HTMLElement>(".panel"));
+      panels.forEach((panel, index) => {
+        if (panel.classList.contains("chart-bloom")) return;
+        if (!panel.querySelector(chartSelector)) return;
+        panel.classList.add("chart-bloom");
+        panel.style.setProperty("--bloom-delay", `${Math.min(0.18, index * 0.018)}s`);
+        observer.observe(panel);
+      });
+    };
+
+    tagPanels();
+    const frame = window.requestAnimationFrame(tagPanels);
+    const shortTimer = window.setTimeout(tagPanels, 180);
+    const settledTimer = window.setTimeout(tagPanels, 700);
+    const mutationObserver = new MutationObserver(tagPanels);
+    mutationObserver.observe(scope, { childList: true, subtree: true });
+
+    return () => {
+      observer.disconnect();
+      mutationObserver.disconnect();
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(shortTimer);
+      window.clearTimeout(settledTimer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
+
 function ShellButton({ children, onClick, label }: { children: ReactNode; onClick?: () => void; label: string }) {
   return <button className="shell-button" type="button" aria-label={label} onClick={onClick}>{children}</button>;
 }
@@ -902,7 +970,6 @@ function HeroShowcase({
   const ambientMotion = performanceTier === "high" && !reducedMotion;
   const labels = ["Primary signal", "Operational read", "Trend state"];
   const trendBars = [42, 68, 58, 88, 74, 92, 64, 98];
-  const riskBars = [86, 72, 58, 47, 39];
   const forecastPoints = [74, 52, 64, 58, 82, 76, 92, 88];
   const stockBars = [54, 78, 62, 91, 66, 48];
   const segmentNodes = [
@@ -919,6 +986,7 @@ function HeroShowcase({
       case "segmentation":
         return (
           <div className="hero-visual hero-visual-segmentation">
+            <span className="hero-live-scan" aria-hidden="true" />
             <div className="hero-visual-grid">
               {segmentNodes.map((node, index) => (
                 <motion.div
@@ -945,32 +1013,41 @@ function HeroShowcase({
       case "churn":
         return (
           <div className="hero-visual hero-visual-churn">
-            <div className="hero-ring-shell">
-              <div className="hero-ring hero-ring-a" />
-              <div className="hero-ring hero-ring-b" />
-              <div className="hero-ring hero-ring-c" />
-              <motion.div
-                className="hero-ring-core"
-                animate={ambientMotion ? { scale: [1, 1.08, 1], opacity: [0.85, 1, 0.85] } : { scale: 1, opacity: 0.92 }}
-                transition={ambientMotion ? { duration: 2.8, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
-              />
-            </div>
-            <div className="hero-risk-bars">
-              {riskBars.map((value, index) => (
-                <motion.span
-                  key={value}
-                  style={{ height: `${value}%` }}
-                  initial={{ opacity: 0, scaleY: 0.3 }}
-                  animate={{ opacity: 1, scaleY: 1 }}
-                  transition={{ delay: 0.08 * index, duration: 0.45 }}
-                />
-              ))}
+            <span className="hero-live-scan" aria-hidden="true" />
+            <div className="churn-command-visual" aria-hidden="true">
+              <div className="churn-signal-column">
+                <span><em>Recency</em><strong>91d</strong></span>
+                <span><em>Frequency</em><strong>4.2</strong></span>
+                <span><em>CLV</em><strong>$8.4K</strong></span>
+              </div>
+              <svg className="churn-flow-lines" viewBox="0 0 360 180">
+                <path className="churn-flow-rail" d="M80 42 C130 42 128 90 178 90" />
+                <path className="churn-flow-rail" d="M80 90 H178" />
+                <path className="churn-flow-rail" d="M80 138 C130 138 128 90 178 90" />
+                <path className="churn-flow-rail" d="M218 90 C258 90 266 48 318 48" />
+                <path className="churn-flow-rail" d="M218 90 C258 90 266 90 318 90" />
+                <path className="churn-flow-rail" d="M218 90 C258 90 266 132 318 132" />
+                <path className="churn-flow-active churn-flow-a" d="M80 42 C130 42 128 90 178 90 C218 90 250 48 318 48" />
+                <path className="churn-flow-active churn-flow-b" d="M80 90 H178 C218 90 250 90 318 90" />
+                <path className="churn-flow-active churn-flow-c" d="M80 138 C130 138 128 90 178 90 C218 90 250 132 318 132" />
+              </svg>
+              <div className="churn-model-card">
+                <span>Risk model</span>
+                <strong>28.2%</strong>
+                <em>churn exposure</em>
+              </div>
+              <div className="churn-action-column">
+                <span><em>VIP recovery</em><strong>247</strong></span>
+                <span><em>Win-back offer</em><strong>$2.91M</strong></span>
+                <span><em>Care queue</em><strong>1.9K</strong></span>
+              </div>
             </div>
           </div>
         );
       case "forecasting":
         return (
           <div className="hero-visual hero-visual-forecasting">
+            <span className="hero-live-scan" aria-hidden="true" />
             <svg viewBox="0 0 320 180" className="hero-line-chart" aria-hidden="true">
               <defs>
                 <linearGradient id="forecast-fill" x1="0" x2="0" y1="0" y2="1">
@@ -992,6 +1069,7 @@ function HeroShowcase({
       case "inventory":
         return (
           <div className="hero-visual hero-visual-inventory">
+            <span className="hero-live-scan" aria-hidden="true" />
             <div className="hero-stock-columns">
               {stockBars.map((value, index) => (
                 <motion.div
@@ -1014,6 +1092,7 @@ function HeroShowcase({
       case "reports":
         return (
           <div className="hero-visual hero-visual-reports">
+            <span className="hero-live-scan" aria-hidden="true" />
             <motion.div className="hero-report-card report-back" animate={ambientMotion ? { rotate: [-8, -6, -8], y: [0, -4, 0] } : { rotate: -7, y: 0 }} transition={ambientMotion ? { duration: 4.6, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }} />
             <motion.div className="hero-report-card report-mid" animate={ambientMotion ? { rotate: [5, 7, 5], y: [0, -6, 0] } : { rotate: 6, y: 0 }} transition={ambientMotion ? { duration: 4.2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }} />
             <div className="hero-report-card report-front">
@@ -1028,6 +1107,7 @@ function HeroShowcase({
       case "media":
         return (
           <div className="hero-visual hero-visual-media">
+            <span className="hero-live-scan" aria-hidden="true" />
             <div className="hero-media-frame">
               <div className="hero-media-head" />
               <div className="hero-media-timeline">
@@ -1049,6 +1129,7 @@ function HeroShowcase({
       case "settings":
         return (
           <div className="hero-visual hero-visual-settings">
+            <span className="hero-live-scan" aria-hidden="true" />
             <div className="hero-settings-hub">
               <motion.div className="hero-settings-core" animate={ambientMotion ? { rotate: 360 } : { rotate: 0 }} transition={ambientMotion ? { duration: 18, repeat: Infinity, ease: "linear" } : { duration: 0.3 }} />
               <span className="hub-a">Theme</span>
@@ -1062,6 +1143,7 @@ function HeroShowcase({
       default:
         return (
           <div className="hero-visual hero-visual-overview">
+            <span className="hero-live-scan" aria-hidden="true" />
             <div className="hero-overview-orb" />
             <svg viewBox="0 0 320 180" className="hero-line-chart" aria-hidden="true">
               <path className="hero-chart-grid" d="M18 140 H302 M18 104 H302 M18 68 H302 M18 32 H302" />
@@ -1090,12 +1172,15 @@ function HeroShowcase({
         {[meta.primary, meta.secondary, meta.tertiary].map((metric, index) => (
           <motion.div
             key={metric}
+            className="hero-metric-card"
             initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 * index, duration: 0.32 }}
+            animate={ambientMotion ? { opacity: 1, y: [0, -3, 0], scale: [1, 1.012, 1] } : { opacity: 1, y: 0, scale: 1 }}
+            transition={ambientMotion ? { delay: 0.08 * index, duration: 4.2 + index * 0.35, repeat: Infinity, ease: "easeInOut" } : { delay: 0.08 * index, duration: 0.32 }}
           >
+            <span className="metric-live-beacon" aria-hidden="true" />
             <small><TextEffect per="word" preset="fade" delay={0.15 + index * 0.05} speedReveal={3.5} as="span">{labels[index]}</TextEffect></small>
-            <AnimatedValue value={metric} />
+            <AnimatedValue value={metric} className="live-hero-value" />
+            <span className="metric-signal-line" aria-hidden="true" />
           </motion.div>
         ))}
       </div>
@@ -1197,7 +1282,10 @@ function TrendIndicator({ value }: { value: string }) {
 type StoryMode = "line" | "bars" | "donut" | "gauge";
 type StorySpec = {
   mode: StoryMode;
-  visual?: "line" | "bars" | "donut" | "gauge" | "stream" | "ranked" | "volume" | "monthly" | "heatmap" | "network" | "scatter" | "table" | "timeline";
+  visual?:
+    | "line" | "bars" | "donut" | "gauge" | "stream" | "ranked" | "volume" | "monthly" | "heatmap" | "network" | "scatter" | "table" | "timeline"
+    | "churn-distribution" | "risk-matrix" | "feature-force" | "retention-timeline" | "churn-network"
+    | "forecast-horizon" | "seasonality-wave" | "weekly-cycle" | "forecast-category";
   storyId?: string;
   metric: string;
   narrative?: string;
@@ -1244,15 +1332,46 @@ function getPanelStorySpec(title: string): StorySpec {
   if (normalized.includes("customer lifetime")) {
     return { mode: "bars", visual: "ranked", storyId: "customer-lifetime-value", metric: d.hero.segmentation.secondary, rows: d.horizontalBarLabels.slice(0, 5).map((label, index) => [label, `${d.horizontalBarValues[index] ?? 0}`, "CLV"]), barSeries: d.horizontalBarValues, accent: "#34d399", secondaryAccent: "#a855f7", narrative: "Customer value tiers rank by contribution so priority segments are clear.", outro: "CLV ranking complete." };
   }
-  if (normalized.includes("cluster scatter") || normalized.includes("force graph") || normalized.includes("neural network")) {
-    return { mode: "line", visual: "network", storyId: normalized.includes("neural") ? "churn-neural-network" : "segment-network", metric: d.navStats.segmentation, accent: "#22d3ee", secondaryAccent: "#ef4444", narrative: "The model view becomes a relationship map, showing how signals connect before the final prediction.", outro: "Network state explained." };
+  if (normalized.includes("cluster scatter") || normalized.includes("force graph") || (normalized.includes("neural network") && !normalized.includes("churn"))) {
+    return { mode: "line", visual: "network", storyId: normalized.includes("neural") ? "segment-neural-network" : "segment-network", metric: d.navStats.segmentation, accent: "#22d3ee", secondaryAccent: "#ef4444", narrative: "The model view becomes a relationship map, showing how signals connect before the final prediction.", outro: "Network state explained." };
+  }
+  if (normalized.includes("churn probability distribution")) {
+    return { mode: "bars", visual: "churn-distribution", storyId: "churn-probability-distribution", metric: d.navStats.churn, barSeries: dashboardDataState.churnKpis.map((item) => Number.parseFloat(item.value.replace(/[^0-9.]/g, "")) || 0).slice(0, 4), accent: "#ef4444", secondaryAccent: "#34d399", narrative: "Churn probability splits into readable risk bands so the customer base is no longer a single flat percentage.", outro: "Churn distribution resolved." };
+  }
+  if (normalized.includes("risk analysis")) {
+    return { mode: "bars", visual: "risk-matrix", storyId: "risk-analysis-matrix", metric: d.navStats.churn, barSeries: d.heat, accent: "#ef4444", secondaryAccent: "#22d3ee", narrative: "Risk bands become a pressure matrix, exposing which cohorts need retention focus first.", outro: "Risk matrix stabilized." };
+  }
+  if (normalized.includes("feature importance")) {
+    return { mode: "line", visual: "feature-force", storyId: "churn-feature-force", metric: d.hero.churn.secondary, accent: "#f97316", secondaryAccent: "#22d3ee", narrative: "Churn drivers connect into a central risk model so recency, value, and loyalty signals are explainable.", outro: "Feature drivers explained." };
+  }
+  if (normalized.includes("churn timeline")) {
+    return { mode: "bars", visual: "retention-timeline", storyId: "churn-retention-timeline", metric: d.hero.churn.tertiary, rows: d.churnRecommendationRows.slice(0, 4), accent: "#f97316", secondaryAccent: "#34d399", narrative: "Churn events convert into a retention timeline with actions sequenced by urgency.", outro: "Retention timeline queued." };
+  }
+  if (normalized.includes("churn neural network")) {
+    return { mode: "line", visual: "churn-network", storyId: "churn-neural-network-v2", metric: d.navStats.churn, accent: "#22d3ee", secondaryAccent: "#ef4444", narrative: "Prediction nodes activate from customer signals into a central churn decision layer.", outro: "Neural pathway resolved." };
+  }
+  if (normalized.includes("retention recommendation")) {
+    return { mode: "bars", visual: "retention-timeline", storyId: "retention-recommendation-engine", metric: `${d.churnRecommendationRows.length} actions`, rows: d.churnRecommendationRows.slice(0, 5), accent: "#f97316", secondaryAccent: "#34d399", narrative: "At-risk customers become a clear retention action queue with intervention recommendations.", outro: "Retention actions packaged." };
   }
   if (normalized.includes("heatmap") || normalized.includes("territory")) {
     return { mode: "bars", visual: "heatmap", storyId: "heatmap-story", metric: d.hero.inventory.tertiary, barSeries: d.heat, accent: "#34d399", secondaryAccent: "#f59e0b", narrative: "Dense operational signals convert into a heat field to expose pressure, concentration, and opportunity.", outro: "Heat field analyzed." };
   }
+  if (normalized.includes("historical demand") || normalized.includes("demand + forecast")) {
+    return { mode: "line", visual: "forecast-horizon", storyId: "historical-demand-forecast-horizon", metric: d.navStats.forecasting, lineSeries: d.compareSeries.slice(-8), barSeries: d.revenueSeries.slice(-7), lineMonths: d.revenueMonths, accent: "#22d3ee", secondaryAccent: "#34d399", narrative: "Historical demand hands off into the forward planning horizon with confidence context.", outro: "Demand horizon calibrated." };
+  }
+  if (normalized.includes("seasonal trend")) {
+    return { mode: "line", visual: "seasonality-wave", storyId: "seasonality-wave-model", metric: d.hero.forecasting.secondary, accent: "#22d3ee", secondaryAccent: "#fbbf24", narrative: "Seasonality is shown as layered demand waves so rolling movement feels different from a normal line chart.", outro: "Seasonality pattern identified." };
+  }
+  if (normalized.includes("weekly trend")) {
+    return { mode: "bars", visual: "weekly-cycle", storyId: "weekly-demand-cycle", metric: d.hero.forecasting.tertiary, barSeries: d.bars.slice(-7), accent: "#60a5fa", secondaryAccent: "#34d399", narrative: "Weekly demand rotates through a seven-day cycle, highlighting where operational pressure peaks.", outro: "Weekly cycle mapped." };
+  }
+  if (normalized.includes("category forecast")) {
+    return { mode: "bars", visual: "forecast-category", storyId: "category-forecast-bars", metric: d.navStats.forecasting, barSeries: d.forecastCategoryValues, accent: "#34d399", secondaryAccent: "#22d3ee", narrative: "Projected demand by product line ranks category pressure for planning and replenishment.", outro: "Category forecast ranked." };
+  }
   if (normalized.includes("forecast detail") || normalized.includes("recommendation") || normalized.includes("preview")) {
     const tableRows = normalized.includes("forecast") ? d.forecastRows : normalized.includes("inventory") ? d.inventoryRecommendationRows : normalized.includes("retention") ? d.churnRecommendationRows : d.topProductsRows;
-    return { mode: "bars", visual: "table", storyId: "table-story", metric: `${tableRows.length} rows`, rows: tableRows.slice(0, 5), barSeries: d.bars, accent: "#6366f1", secondaryAccent: "#22d3ee", narrative: "Structured rows are promoted into an executive-ready replay with ranked evidence and next actions.", outro: "Table evidence packaged." };
+    const storyId = normalized.includes("forecast") ? "forecast-detail-table" : normalized.includes("inventory") ? "inventory-recommendation-table" : normalized.includes("retention") ? "retention-recommendation-table" : "table-story";
+    return { mode: "bars", visual: "table", storyId, metric: `${tableRows.length} rows`, rows: tableRows.slice(0, 5), barSeries: d.bars, accent: "#6366f1", secondaryAccent: "#22d3ee", narrative: "Structured rows are promoted into an executive-ready replay with ranked evidence and next actions.", outro: "Table evidence packaged." };
   }
   if (normalized.includes("timeline") || normalized.includes("weekly trend") || normalized.includes("reorder schedule")) {
     return { mode: "bars", visual: "timeline", storyId: "timeline-story", metric: d.hero.forecasting.tertiary, barSeries: normalized.includes("reorder") ? d.heat.slice(0, 7) : d.bars.slice(-7), accent: "#60a5fa", secondaryAccent: "#fbbf24", narrative: "The time sequence builds bar by bar so operational timing and pressure are easier to read.", outro: "Timeline ready." };
@@ -1373,23 +1492,80 @@ function createLinePath(values: number[], width: number, height: number, padding
   }).join(" ");
 }
 
+function createLinePoints(values: number[], width: number, height: number, padding: { left: number; right: number; top: number; bottom: number }, domain?: { min: number; max: number }) {
+  const max = domain?.max ?? Math.max(...values, 1);
+  const min = domain?.min ?? Math.min(...values, 0);
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  return values.map((value, index) => {
+    const x = padding.left + (innerWidth / Math.max(values.length - 1, 1)) * index;
+    const normalized = max === min ? 0.5 : (value - min) / (max - min);
+    const y = padding.top + innerHeight - normalized * innerHeight;
+    return { x, y, value };
+  });
+}
+
+function createSmoothPath(points: Array<{ x: number; y: number }>) {
+  if (!points.length) return "";
+  if (points.length < 3) {
+    return points.map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  }
+
+  return points.reduce((path, point, index) => {
+    if (index === 0) return `M${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+    const previous = points[index - 1];
+    const next = points[index + 1] ?? point;
+    const controlX1 = previous.x + (point.x - (points[index - 2]?.x ?? previous.x)) / 6;
+    const controlY1 = previous.y + (point.y - (points[index - 2]?.y ?? previous.y)) / 6;
+    const controlX2 = point.x - (next.x - previous.x) / 6;
+    const controlY2 = point.y - (next.y - previous.y) / 6;
+    return `${path} C${controlX1.toFixed(1)},${controlY1.toFixed(1)} ${controlX2.toFixed(1)},${controlY2.toFixed(1)} ${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+  }, "");
+}
+
+function formatAxisCurrency(value: number) {
+  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
+  if (Math.abs(value) >= 1_000) return `$${Math.round(value / 1_000)}k`;
+  return `$${Math.round(value)}`;
+}
+
 function RevenueLine({ compact = false }: { compact?: boolean }) {
   const gradientId = useId().replace(/:/g, "");
   const lineGradient = `lineStroke-${gradientId}`;
   const areaGradient = `lineArea-${gradientId}`;
+  const glowGradient = `lineGlow-${gradientId}`;
+  const glowFilter = `lineFilter-${gradientId}`;
+  const clipId = `lineClip-${gradientId}`;
   const values = compact ? dashboardDataState.compactSeries : dashboardDataState.revenueSeries;
   const compareValues = compact ? dashboardDataState.revenueSeries : dashboardDataState.compareSeries;
-  const path = createLinePath(values, 560, 190, { left: 24, right: 22, top: 22, bottom: 24 });
-  const comparePath = createLinePath(compareValues, 560, 190, { left: 24, right: 22, top: 34, bottom: 36 });
-  const areaPath = `${path} L538,166 L24,166 Z`;
-  const pointMax = Math.max(...values, 1);
-  const pointMin = Math.min(...values, 0);
-  const points = values.map((value, index) => {
-    const x = 24 + ((538 - 24) / Math.max(values.length - 1, 1)) * index;
-    const normalized = pointMax === pointMin ? 0.5 : (value - pointMin) / (pointMax - pointMin);
-    const y = 22 + (166 - 22) - normalized * (166 - 22);
-    return { x, y };
-  });
+  const chartPadding = { left: compact ? 46 : 56, right: 24, top: 24, bottom: 30 };
+  const plotLeft = chartPadding.left;
+  const plotRight = 560 - chartPadding.right;
+  const plotTop = chartPadding.top;
+  const plotBottom = 190 - chartPadding.bottom;
+  const plotWidth = plotRight - plotLeft;
+  const plotHeight = plotBottom - plotTop;
+  const rawMax = Math.max(...values, ...compareValues, 1);
+  const axisStep = rawMax >= 1_000_000 ? 500_000 : rawMax >= 250_000 ? 250_000 : rawMax >= 100_000 ? 50_000 : 25_000;
+  const axisMax = Math.max(axisStep, Math.ceil(rawMax / axisStep) * axisStep);
+  const domain = { min: 0, max: axisMax };
+  const axisTicks = [0, axisMax * .25, axisMax * .5, axisMax * .75, axisMax];
+  const yForValue = (value: number) => plotBottom - (Math.max(0, Math.min(axisMax, value)) / axisMax) * plotHeight;
+  const averageValue = values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
+  const targetY = yForValue(averageValue);
+  const points = createLinePoints(values, 560, 190, chartPadding, domain);
+  const comparePoints = createLinePoints(compareValues, 560, 190, chartPadding, domain);
+  const path = createSmoothPath(points);
+  const comparePath = createSmoothPath(comparePoints);
+  const firstPoint = points[0] ?? { x: plotLeft, y: plotBottom, value: 0 };
+  const finalPoint = points[points.length - 1] ?? firstPoint;
+  const peakPoint = points.reduce((peak, point) => point.value > peak.value ? point : peak, firstPoint);
+  const areaPath = `${path} L${finalPoint.x.toFixed(1)},${plotBottom} L${firstPoint.x.toFixed(1)},${plotBottom} Z`;
+  const finalValueLabel = formatAxisCurrency(finalPoint.value);
+  const trendDelta = values.length > 1 ? finalPoint.value - values[values.length - 2] : 0;
+  const trendLabel = `${trendDelta >= 0 ? "+" : "-"}${formatAxisCurrency(Math.abs(trendDelta)).replace("$", "")}`;
+  const chipX = Math.min(Math.max(finalPoint.x - 98, plotLeft + 12), plotRight - 102);
+  const chipY = Math.min(Math.max(finalPoint.y - 52, plotTop + 6), plotBottom - 52);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<HTMLDivElement>(null);
@@ -1433,27 +1609,77 @@ function RevenueLine({ compact = false }: { compact?: boolean }) {
             <stop offset="55%" stopColor="var(--chart-b)" stopOpacity=".16" />
             <stop offset="100%" stopColor="var(--chart-a)" stopOpacity="0" />
           </linearGradient>
+          <radialGradient id={glowGradient} cx="50%" cy="32%" r="72%">
+            <stop offset="0%" stopColor="var(--chart-b)" stopOpacity=".24" />
+            <stop offset="58%" stopColor="var(--chart-a)" stopOpacity=".08" />
+            <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+          </radialGradient>
+          <filter id={glowFilter} x="-20%" y="-80%" width="140%" height="260%">
+            <feGaussianBlur stdDeviation="5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <clipPath id={clipId}>
+            <rect x={plotLeft} y={plotTop} width={plotWidth} height={plotHeight} rx="18" />
+          </clipPath>
         </defs>
-        {[42, 78, 114, 150].map((y) => <line key={y} x1="24" x2="538" y1={y} y2={y} className="grid-line" />)}
-        {[0, 50, 100, 150].map((v, i) => <text key={v} x="0" y={154 - i * 36} className="axis-label">${v}k</text>)}
-        {months.map((month, index) => {
-          const x = 24 + ((538 - 24) / Math.max(months.length - 1, 1)) * index;
-          return <text key={`${month}-${index}`} x={x} y="182" className="axis-label">{month}</text>;
+        <rect x={plotLeft} y={plotTop} width={plotWidth} height={plotHeight} rx="18" className="revenue-plot-glass" />
+        <rect x={plotLeft} y={plotTop} width={plotWidth} height={plotHeight} rx="18" fill={`url(#${glowGradient})`} className="revenue-plot-glow" />
+        {axisTicks.map((value) => {
+          const y = yForValue(value);
+          return <line key={`grid-${value}`} x1={plotLeft} x2={plotRight} y1={y} y2={y} className="grid-line" />;
         })}
-        <line x1="24" x2="538" y1="92" y2="92" className="target-line" />
-        <path d={areaPath} fill={`url(#${areaGradient})`} />
-        <path className="compare-line" d={comparePath} />
-        <path className="draw-line" style={{ stroke: `url(#${lineGradient})` }} d={path} />
-        {points.map((point, index) => (
-          <circle
-            key={`${point.x}-${index}`}
-            cx={point.x}
-            cy={point.y}
-            r="4.8"
-            className="line-dot bio-pulse"
-            style={{ stroke: `url(#${lineGradient})`, animationDelay: `${index * 0.22}s` }}
-          />
-        ))}
+        {axisTicks.map((value) => {
+          const y = yForValue(value);
+          return <text key={`axis-${value}`} x={plotLeft - 10} y={y + 3} className="axis-label axis-y-label">{formatAxisCurrency(value)}</text>;
+        })}
+        {months.map((month, index) => {
+          const x = plotLeft + (plotWidth / Math.max(months.length - 1, 1)) * index;
+          return <text key={`${month}-${index}`} x={x} y="182" className="axis-label axis-month-label">{month}</text>;
+        })}
+        <g clipPath={`url(#${clipId})`}>
+          <line x1={plotLeft} x2={plotRight} y1={targetY} y2={targetY} className="target-line" />
+          <path className="revenue-area-fill" d={areaPath} fill={`url(#${areaGradient})`} />
+          <path className="compare-line" d={comparePath} />
+          <path className="revenue-line-depth" style={{ stroke: `url(#${lineGradient})`, filter: `url(#${glowFilter})` }} d={path} />
+          <path className="draw-line revenue-primary-line" style={{ stroke: `url(#${lineGradient})` }} d={path} />
+          {points.map((point, index) => (
+            <circle
+              key={`${point.x}-${index}`}
+              cx={point.x}
+              cy={point.y}
+              r={point === finalPoint || point === peakPoint ? "5.6" : "4.3"}
+              className="line-dot bio-pulse"
+              style={{ stroke: `url(#${lineGradient})`, animationDelay: `${index * 0.22}s` }}
+            />
+          ))}
+        </g>
+        {!compact && (
+          <>
+            <g className="revenue-endpoint-marker revenue-start-marker" transform={`translate(${firstPoint.x}, ${firstPoint.y})`}>
+              <circle r="9.5" />
+              <circle r="3.8" />
+              <text x="12" y="4">Start</text>
+            </g>
+            <g className="revenue-endpoint-marker revenue-finish-marker" transform={`translate(${finalPoint.x}, ${finalPoint.y})`}>
+              <circle r="10.5" />
+              <circle r="4.2" />
+              <text x="-12" y="24">End</text>
+            </g>
+            <line x1={peakPoint.x} x2={peakPoint.x} y1={plotTop + 2} y2={plotBottom} className="revenue-peak-guide" />
+            <g className="revenue-peak-badge" transform={`translate(${Math.min(Math.max(peakPoint.x - 38, plotLeft + 6), plotRight - 82)}, ${Math.max(peakPoint.y - 30, plotTop + 6)})`}>
+              <rect width="76" height="22" rx="11" />
+              <text x="38" y="15">Peak {months[points.indexOf(peakPoint)]}</text>
+            </g>
+            <g className="revenue-value-chip" transform={`translate(${chipX}, ${chipY})`}>
+              <rect width="96" height="42" rx="15" />
+              <text x="14" y="17" className="chip-label">Latest</text>
+              <text x="14" y="33" className="chip-value">{finalValueLabel} <tspan>{trendLabel}</tspan></text>
+            </g>
+          </>
+        )}
       </svg>
     </div>
   );
@@ -2810,6 +3036,7 @@ function Dashboard() {
   }, []);
 
   usePageAnimation(root, [loading]);
+  useChartBloom(root, [loading, activePage]);
 
   const renderPage = () => {
     if (activePage === "overview") return <OverviewPage />;

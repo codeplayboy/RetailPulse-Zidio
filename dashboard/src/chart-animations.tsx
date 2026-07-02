@@ -280,7 +280,10 @@ export interface DataStoryProps {
   kicker: string;
   metric?: string;
   mode?: "line" | "bars" | "donut" | "gauge";
-  visual?: "line" | "bars" | "donut" | "gauge" | "stream" | "ranked" | "volume" | "monthly" | "heatmap" | "network" | "scatter" | "table" | "timeline";
+  visual?:
+    | "line" | "bars" | "donut" | "gauge" | "stream" | "ranked" | "volume" | "monthly" | "heatmap" | "network" | "scatter" | "table" | "timeline"
+    | "churn-distribution" | "risk-matrix" | "feature-force" | "retention-timeline" | "churn-network"
+    | "forecast-horizon" | "seasonality-wave" | "weekly-cycle" | "forecast-category";
   storyId?: string;
   narrative?: string;
   outro?: string;
@@ -713,26 +716,28 @@ const StreamStorySection: React.FC<{ rows: string[][]; accent: string; secondary
     ["Forecast", "Horizon refreshed", "Ready"],
   ];
   return (
-    <div style={{ width: "100%", height: "100%", display: "grid", gap: 12 }}>
+    <div style={{ width: "100%", height: "100%", display: "grid", gap: 12, alignContent: "center" }}>
       {events.map((row, index) => {
         const p = Math.max(0.42, ilerp(frame, index * 11, index * 11 + 22));
+        const active = Math.sin((frame + index * 14) * 0.06) * 0.5 + 0.5;
         return (
           <div key={`${row[0]}-${index}`} style={{
             display: "grid",
             gridTemplateColumns: "72px 1fr auto",
             alignItems: "center",
             gap: 16,
-            padding: "13px 16px",
-            borderRadius: 18,
+            padding: "12px 16px",
+            borderRadius: 20,
             border: `1px solid ${index % 2 ? secondary : accent}33`,
             background: `linear-gradient(135deg, ${index % 2 ? secondary : accent}1f, rgba(255,255,255,.035))`,
             opacity: p,
             transform: `translateX(${(1 - p) * -24}px)`,
+            boxShadow: `0 14px 36px rgba(0,0,0,.26), inset 0 1px rgba(255,255,255,.12), 0 0 ${14 + active * 18}px ${index % 2 ? secondary : accent}22`,
           }}>
             <span style={{ color: accent, fontSize: 12, fontWeight: 950, letterSpacing: ".14em" }}>
               T+{String(index + 1).padStart(2, "0")}
             </span>
-            <strong style={{ fontSize: 20, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <strong style={{ fontSize: 18, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {row[0]} · {row[1] ?? "Signal"}
             </strong>
             <em style={{ color: index % 2 ? secondary : accent, fontSize: 13, fontWeight: 900, fontStyle: "normal" }}>
@@ -749,16 +754,21 @@ const RankedStorySection: React.FC<{ rows: string[][]; bars: number[]; accent: s
   const frame = useCurrentFrame();
   const source = rows.length ? rows.slice(0, 5) : bars.slice(0, 5).map((value, i) => [`Product ${i + 1}`, `$${value.toFixed(1)}K`, `${Math.round(value)}%`]);
   return (
-    <div style={{ width: "100%", height: "100%", display: "grid", gap: 12 }}>
+    <div style={{ width: "100%", height: "100%", display: "grid", gap: 11, alignContent: "center" }}>
       {source.map((row, index) => {
         const p = Math.max(0.38, spring({ frame: frame - index * 8, fps: 30, config: { damping: 24, stiffness: 120 } }));
         const width = Math.max(18, Math.min(100, Number.parseFloat(String(row[2]).replace(/[^0-9.]/g, "")) || bars[index] || 60));
         return (
           <div key={`${row[0]}-${index}`} style={{
             display: "grid",
-            gridTemplateColumns: "42px 1fr 150px",
+            gridTemplateColumns: "42px 1fr 180px",
             alignItems: "center",
             gap: 18,
+            padding: "8px 12px",
+            borderRadius: 18,
+            background: `linear-gradient(135deg, rgba(255,255,255,.07), ${index === 0 ? accent : secondary}10)`,
+            border: `1px solid ${index === 0 ? accent : "rgba(255,255,255,.12)"}`,
+            boxShadow: index === 0 ? `0 0 36px ${accent}2e` : "0 12px 30px rgba(0,0,0,.18)",
             opacity: p,
             transform: `translateY(${(1 - p) * 18}px)`,
           }}>
@@ -766,8 +776,8 @@ const RankedStorySection: React.FC<{ rows: string[][]; bars: number[]; accent: s
               width: 36, height: 36, borderRadius: 12, display: "grid", placeItems: "center",
               background: `${accent}22`, border: `1px solid ${accent}55`, color: accent, fontWeight: 950,
             }}>{index + 1}</span>
-            <div>
-              <strong style={{ display: "block", fontSize: 20, color: "white" }}>{row[0]}</strong>
+            <div style={{ minWidth: 0 }}>
+              <strong style={{ display: "block", fontSize: 17, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row[0]}</strong>
               <span style={{ fontSize: 13, color: "rgba(255,255,255,.54)", fontWeight: 800 }}>{row[1] ?? "Revenue leader"}</span>
             </div>
             <div style={{ height: 13, borderRadius: 999, background: "rgba(255,255,255,.08)", overflow: "hidden" }}>
@@ -794,7 +804,17 @@ const VolumeStorySection: React.FC<{ bars: number[]; accent: string; secondary: 
     <div style={{ width: "100%", height: "100%", position: "relative", perspective: 860 }}>
       <div style={{
         position: "absolute",
-        inset: "20px 10px 0",
+        left: "6%",
+        right: "6%",
+        bottom: 24,
+        height: 2,
+        background: `linear-gradient(90deg, transparent, ${secondary}, ${accent}, transparent)`,
+        boxShadow: `0 0 26px ${accent}`,
+        opacity: 0.75,
+      }} />
+      <div style={{
+        position: "absolute",
+        inset: "14px 18px 2px",
         transform: `rotateX(58deg) rotateZ(${-10 + Math.sin(frame * .03) * 2}deg)`,
         transformStyle: "preserve-3d",
         display: "grid",
@@ -810,8 +830,8 @@ const VolumeStorySection: React.FC<{ bars: number[]; accent: string; secondary: 
               height: h,
               borderRadius: "12px 12px 4px 4px",
               background: `linear-gradient(180deg, ${secondary}, ${accent})`,
-              boxShadow: `0 ${18 + h * .05}px 40px ${accent}44, inset 0 1px rgba(255,255,255,.45)`,
-              transform: `translateZ(${h * .18}px)`,
+              boxShadow: `0 ${18 + h * .05}px 46px ${accent}55, inset 0 1px rgba(255,255,255,.45)`,
+              transform: `translateZ(${h * .22}px) rotateY(${Math.sin(frame * 0.035 + index) * 3}deg)`,
             }} />
           );
         })}
@@ -824,19 +844,77 @@ const MonthlyStorySection: React.FC<{ bars: number[]; accent: string; secondary:
   const frame = useCurrentFrame();
   const values = bars.length ? bars.slice(-7) : DEFAULT_BARS;
   const max = Math.max(...values, 1);
+  const points = values.map((value, index) => ({
+    x: 45 + ((938 - 45) / Math.max(values.length - 1, 1)) * index,
+    y: 232 - (value / max) * (232 - 58),
+  }));
+  const linePath = points.reduce((path, point, index) => {
+    if (index === 0) return `M${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+    const prev = points[index - 1];
+    const dx = (point.x - prev.x) * 0.42;
+    return `${path} C${(prev.x + dx).toFixed(1)},${prev.y.toFixed(1)} ${(point.x - dx).toFixed(1)},${point.y.toFixed(1)} ${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+  }, "");
+  const lineProgress = Math.max(0.24, ilerp(frame, 0, 82));
   return (
-    <div style={{ width: "100%", height: "100%", display: "grid", gridTemplateColumns: `repeat(${values.length}, 1fr)`, gap: 16, alignItems: "end" }}>
-      {values.map((value, index) => {
-        const p = Math.max(0.34, spring({ frame: frame - index * 6, fps: 30, config: { damping: 24, stiffness: 115 } }));
-        const revenueH = Math.max(18, (value / max) * 230 * p);
-        const profitH = Math.max(10, revenueH * (0.36 + (index % 3) * 0.07));
-        return (
-          <div key={index} style={{ position: "relative", height: 250, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 7 }}>
-            <div style={{ width: "38%", height: revenueH, borderRadius: "14px 14px 4px 4px", background: `linear-gradient(180deg, ${accent}, #7c2d12)`, boxShadow: `0 0 22px ${accent}55` }} />
-            <div style={{ width: "38%", height: profitH, borderRadius: "14px 14px 4px 4px", background: `linear-gradient(180deg, ${secondary}, #831843)`, boxShadow: `0 0 22px ${secondary}55` }} />
-          </div>
-        );
-      })}
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      <div style={{
+        position: "absolute",
+        inset: "0 0 20px",
+        display: "grid",
+        gridTemplateColumns: `repeat(${values.length}, 1fr)`,
+        gap: 16,
+        alignItems: "end",
+      }}>
+        {values.map((value, index) => {
+          const p = Math.max(0.34, spring({ frame: frame - index * 6, fps: 30, config: { damping: 24, stiffness: 115 } }));
+          const revenueH = Math.max(18, (value / max) * 210 * p);
+          const profitH = Math.max(10, revenueH * (0.36 + (index % 3) * 0.07));
+          return (
+            <div key={index} style={{ position: "relative", height: 230, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 8 }}>
+              <div style={{ width: "34%", height: revenueH, borderRadius: "16px 16px 5px 5px", background: `linear-gradient(180deg, #fde68a, ${accent} 48%, #7c2d12)`, boxShadow: `0 0 28px ${accent}66, inset 0 1px rgba(255,255,255,.55)` }} />
+              <div style={{ width: "34%", height: profitH, borderRadius: "16px 16px 5px 5px", background: `linear-gradient(180deg, #f9a8d4, ${secondary} 54%, #831843)`, boxShadow: `0 0 28px ${secondary}55, inset 0 1px rgba(255,255,255,.45)` }} />
+            </div>
+          );
+        })}
+      </div>
+      <svg viewBox="0 0 980 280" width="100%" height="100%" style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+        <defs>
+          <linearGradient id={`monthly-line-${accent.replace(/[^a-z0-9]/gi, "x")}`} x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor={accent} />
+            <stop offset="58%" stopColor={secondary} />
+            <stop offset="100%" stopColor="#ffffff" />
+          </linearGradient>
+        </defs>
+        <path d={linePath} fill="none" stroke={secondary} strokeWidth="12" strokeLinecap="round" opacity="0.22" style={{ filter: `blur(8px) drop-shadow(0 0 24px ${secondary})` }} />
+        <path d={linePath} fill="none" stroke="rgba(255,255,255,.72)" strokeWidth="1.8" strokeLinecap="round" opacity="0.38" />
+        <path
+          d={linePath}
+          fill="none"
+          stroke={`url(#monthly-line-${accent.replace(/[^a-z0-9]/gi, "x")})`}
+          strokeWidth="4.6"
+          strokeLinecap="round"
+          pathLength="1"
+          strokeDasharray={`${lineProgress} ${1 - lineProgress}`}
+          opacity="0.9"
+          style={{ filter: `drop-shadow(0 0 16px ${secondary}) drop-shadow(0 0 28px ${accent}55)` }}
+        />
+        {values.map((value, index) => {
+          const x = points[index].x;
+          const y = points[index].y;
+          const p = Math.max(0.42, ilerp(frame, index * 7, index * 7 + 18));
+          return (
+            <circle
+              key={index}
+              cx={x}
+              cy={y}
+              r={5.5 * p}
+              fill="white"
+              opacity={p}
+              style={{ filter: `drop-shadow(0 0 12px ${secondary})` }}
+            />
+          );
+        })}
+      </svg>
     </div>
   );
 };
@@ -887,6 +965,191 @@ const NetworkStorySection: React.FC<{ accent: string; secondary: string }> = ({ 
   );
 };
 
+const ChurnDistributionStorySection: React.FC<{ bars: number[]; accent: string; secondary: string }> = ({ bars, accent, secondary }) => {
+  const frame = useCurrentFrame();
+  const normalizeRiskBand = (value: number, index: number) => {
+    if (!Number.isFinite(value) || value <= 0) return [18, 36, 58, 82][index] ?? 42;
+    if (value > 100) return Math.min(92, Math.max(12, value / 10));
+    return Math.min(92, Math.max(8, value));
+  };
+  const values = (bars.length ? bars : [28, 41, 62, 86]).slice(0, 4).map(normalizeRiskBand);
+  const labels = ["Low", "Medium", "High", "Critical"];
+  const colors = ["#34d399", "#fbbf24", "#f97316", accent];
+  return (
+    <svg viewBox="0 0 980 320" width="100%" height="100%">
+      <circle cx="490" cy="160" r="128" fill={secondary} opacity=".08" />
+      {values.map((value, index) => {
+        const p = Math.max(0.18, ilerp(frame, 8 + index * 10, 56 + index * 10));
+        const r = 64 + index * 32;
+        const dash = Math.min(92, Math.max(8, value)) * p;
+        return (
+          <g key={labels[index]}>
+            <circle cx="490" cy="160" r={r} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="18" />
+            <circle cx="490" cy="160" r={r} fill="none" stroke={colors[index]} strokeWidth="18" pathLength="100" strokeDasharray={`${dash} ${100 - dash}`} strokeLinecap="round" transform={`rotate(${-105 + index * 12} 490 160)`} style={{ filter: `drop-shadow(0 0 18px ${colors[index]}88)` }} />
+            <text x={690} y={88 + index * 48} fill={colors[index]} fontSize="18" fontWeight="950">{labels[index]}</text>
+            <text x={810} y={88 + index * 48} fill="white" fontSize="22" fontWeight="950">{Math.round(value)}%</text>
+          </g>
+        );
+      })}
+      <text x="490" y="148" textAnchor="middle" fill="rgba(255,255,255,.58)" fontSize="18" fontWeight="900" letterSpacing=".12em">RISK MIX</text>
+      <text x="490" y="184" textAnchor="middle" fill="white" fontSize="42" fontWeight="950">Churn Bands</text>
+    </svg>
+  );
+};
+
+const RiskMatrixStorySection: React.FC<{ values: number[]; accent: string; secondary: string }> = ({ values, accent, secondary }) => {
+  const frame = useCurrentFrame();
+  const cells = (values.length ? values : [86, 68, 41, 29, 74, 56, 38, 91, 63, 48, 35, 78]).slice(0, 12);
+  return (
+    <div style={{ width: "100%", height: "100%", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+      {cells.map((value, index) => {
+        const p = Math.max(0.25, ilerp(frame, index * 4, index * 4 + 22));
+        const color = value > 75 ? accent : value > 55 ? "#f97316" : value > 38 ? "#fbbf24" : secondary;
+        return (
+          <div key={index} style={{ borderRadius: 22, padding: 16, border: `1px solid ${color}55`, background: `linear-gradient(145deg, ${color}2f, rgba(255,255,255,.045))`, opacity: p, transform: `scale(${0.9 + p * 0.1}) translateY(${(1 - p) * 12}px)`, boxShadow: `0 0 ${16 + value * .18}px ${color}33, inset 0 1px rgba(255,255,255,.12)` }}>
+            <div style={{ color, fontSize: 12, fontWeight: 950, letterSpacing: ".12em" }}>R{index + 1}</div>
+            <strong style={{ display: "block", color: "white", fontSize: 28, marginTop: 16 }}>{Math.round(value)}%</strong>
+            <span style={{ color: "rgba(255,255,255,.48)", fontSize: 12, fontWeight: 800 }}>cohort pressure</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const FeatureForceStorySection: React.FC<{ accent: string; secondary: string }> = ({ accent, secondary }) => {
+  const frame = useCurrentFrame();
+  const features = [
+    { label: "Recency", x: 165, y: 70 },
+    { label: "Frequency", x: 118, y: 225 },
+    { label: "CLV", x: 430, y: 44 },
+    { label: "Orders", x: 585, y: 230 },
+    { label: "Loyalty", x: 792, y: 92 },
+  ];
+  const center = { x: 490, y: 160 };
+  return (
+    <svg viewBox="0 0 980 320" width="100%" height="100%">
+      {features.map((node, index) => {
+        const p = Math.max(0.24, ilerp(frame, 8 + index * 8, 34 + index * 8));
+        const color = index % 2 ? secondary : accent;
+        return (
+          <g key={node.label}>
+            <line x1={node.x} y1={node.y} x2={center.x} y2={center.y} stroke={color} strokeWidth="2.5" opacity={p * .62} strokeDasharray="10 12" strokeDashoffset={-frame * 1.6} />
+            <circle cx={node.x} cy={node.y} r={22 * p} fill={color} opacity=".2" />
+            <circle cx={node.x} cy={node.y} r={10 + Math.sin(frame * .06 + index) * 2} fill={color} style={{ filter: `drop-shadow(0 0 16px ${color})` }} />
+            <text x={node.x} y={node.y + 42} textAnchor="middle" fill="white" fontSize="16" fontWeight="900" opacity={p}>{node.label}</text>
+          </g>
+        );
+      })}
+      <circle cx={center.x} cy={center.y} r={58 + Math.sin(frame * .04) * 5} fill={`${accent}24`} stroke={accent} strokeWidth="2" />
+      <text x={center.x} y={center.y - 6} textAnchor="middle" fill="white" fontSize="31" fontWeight="950">Risk</text>
+      <text x={center.x} y={center.y + 24} textAnchor="middle" fill={accent} fontSize="16" fontWeight="950">driver model</text>
+    </svg>
+  );
+};
+
+const RetentionTimelineStorySection: React.FC<{ rows: string[][]; accent: string; secondary: string }> = ({ rows, accent, secondary }) => {
+  const frame = useCurrentFrame();
+  const source = rows.length ? rows.slice(0, 4) : [["C00421", "High", "Personal outreach"], ["C00318", "High", "Win-back offer"], ["C00102", "Medium", "Care queue"], ["C00818", "Low", "Monitor"]];
+  return (
+    <div style={{ width: "100%", height: "100%", display: "grid", gap: 14, alignContent: "center" }}>
+      {source.map((row, index) => {
+        const p = Math.max(0.28, spring({ frame: frame - index * 11, fps: 30, config: { damping: 24, stiffness: 105 } }));
+        const color = index < 2 ? accent : secondary;
+        return (
+          <div key={`${row[0]}-${index}`} style={{ display: "grid", gridTemplateColumns: "96px 1fr 210px", alignItems: "center", gap: 16, padding: "13px 16px", borderRadius: 20, border: `1px solid ${color}44`, background: `linear-gradient(135deg, ${color}20, rgba(255,255,255,.04))`, opacity: p, transform: `translateX(${(1 - p) * -24}px)`, boxShadow: `0 16px 44px rgba(0,0,0,.24), 0 0 26px ${color}22` }}>
+            <strong style={{ color, fontSize: 17 }}>{row[0]}</strong>
+            <span style={{ color: "white", fontSize: 18, fontWeight: 900 }}>{row[2] ?? row[4] ?? "Retention action"}</span>
+            <em style={{ color: "rgba(255,255,255,.62)", fontStyle: "normal", fontSize: 14, fontWeight: 900 }}>{row[1] ?? "Risk"}</em>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const ForecastHorizonStorySection: React.FC<{ history: number[]; forecast: number[]; months: string[]; accent: string; secondary: string }> = ({ history, forecast, months, accent, secondary }) => {
+  const frame = useCurrentFrame();
+  const hist = history.length ? history.slice(-8) : [42, 48, 45, 58, 61, 57, 66, 70];
+  const fc = forecast.length ? forecast.slice(0, 7) : [72, 76, 80, 84, 88, 91, 95];
+  const all = [...hist, ...fc];
+  const path = buildSmoothLinePath(all, 48, 900, 244, 34);
+  const splitX = 48 + (900 / Math.max(all.length - 1, 1)) * (hist.length - 1);
+  const p = Math.max(.18, ilerp(frame, 0, 96));
+  return (
+    <svg viewBox="0 0 980 320" width="100%" height="100%">
+      <rect x="38" y="22" width="904" height="250" rx="28" fill={`${accent}12`} stroke="rgba(255,255,255,.12)" />
+      <path d={`${path} L948 294 L48 294 Z`} fill={secondary} opacity=".07" />
+      <path d={path} fill="none" stroke={accent} strokeWidth="5" strokeLinecap="round" pathLength="1" strokeDasharray={`${p} ${1 - p}`} style={{ filter: `drop-shadow(0 0 16px ${accent})` }} />
+      <line x1={splitX} x2={splitX} y1="36" y2="282" stroke={secondary} strokeWidth="2" strokeDasharray="8 8" opacity={ilerp(frame, 58, 80)} />
+      <text x={splitX + 14} y="64" fill={secondary} fontSize="18" fontWeight="950">forecast opens</text>
+      {months.slice(0, Math.min(all.length, 10)).map((m, i) => <text key={i} x={48 + (900 / Math.max(all.length - 1, 1)) * i} y="308" textAnchor="middle" fill="rgba(255,255,255,.5)" fontSize="14" fontWeight="800">{m}</text>)}
+    </svg>
+  );
+};
+
+const SeasonalityWaveStorySection: React.FC<{ accent: string; secondary: string }> = ({ accent, secondary }) => {
+  const frame = useCurrentFrame();
+  const wave = (amp: number, y: number, phase: number) => Array.from({ length: 36 }, (_, i) => {
+    const x = 45 + i * 25;
+    const yy = y + Math.sin(i * .55 + phase + frame * .045) * amp;
+    return `${i ? "L" : "M"}${x.toFixed(1)},${yy.toFixed(1)}`;
+  }).join(" ");
+  return (
+    <svg viewBox="0 0 980 320" width="100%" height="100%">
+      <path d={wave(42, 146, 0)} fill="none" stroke={accent} strokeWidth="6" strokeLinecap="round" opacity=".9" style={{ filter: `drop-shadow(0 0 18px ${accent})` }} />
+      <path d={wave(26, 178, 1.8)} fill="none" stroke={secondary} strokeWidth="4" strokeLinecap="round" opacity=".72" strokeDasharray="14 10" />
+      {["Trend", "Weekly", "Monthly"].map((label, i) => <text key={label} x={110 + i * 260} y={72 + i * 54} fill={i ? secondary : accent} fontSize="25" fontWeight="950">{label}</text>)}
+    </svg>
+  );
+};
+
+const WeeklyCycleStorySection: React.FC<{ values: number[]; accent: string; secondary: string }> = ({ values, accent, secondary }) => {
+  const frame = useCurrentFrame();
+  const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const source = (values.length ? values : [48, 56, 62, 60, 74, 88, 69]).slice(0, 7);
+  return (
+    <svg viewBox="0 0 980 320" width="100%" height="100%">
+      {source.map((value, index) => {
+        const angle = (-90 + index * (360 / 7)) * Math.PI / 180;
+        const p = Math.max(.25, ilerp(frame, index * 7, index * 7 + 25));
+        const len = 62 + value * 1.35 * p;
+        const color = index >= 5 ? secondary : accent;
+        return (
+          <g key={labels[index]}>
+            <line x1="490" y1="160" x2={490 + Math.cos(angle) * len} y2={160 + Math.sin(angle) * len} stroke={color} strokeWidth="18" strokeLinecap="round" opacity=".82" style={{ filter: `drop-shadow(0 0 18px ${color})` }} />
+            <text x={490 + Math.cos(angle) * 180} y={160 + Math.sin(angle) * 180} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="18" fontWeight="950">{labels[index]}</text>
+          </g>
+        );
+      })}
+      <circle cx="490" cy="160" r="46" fill="rgba(255,255,255,.09)" stroke={accent} />
+      <text x="490" y="167" textAnchor="middle" fill="white" fontSize="20" fontWeight="950">7D</text>
+    </svg>
+  );
+};
+
+const ForecastCategoryStorySection: React.FC<{ labels?: string[]; bars: number[]; accent: string; secondary: string }> = ({ labels = [], bars, accent, secondary }) => {
+  const frame = useCurrentFrame();
+  const source = (bars.length ? bars : [82, 74, 66, 58, 44]).slice(0, 5);
+  return (
+    <div style={{ display: "grid", gap: 14, alignContent: "center", width: "100%", height: "100%" }}>
+      {source.map((value, index) => {
+        const p = Math.max(.24, spring({ frame: frame - index * 8, fps: 30, config: { damping: 22, stiffness: 110 } }));
+        const color = index % 2 ? secondary : accent;
+        return (
+          <div key={index} style={{ display: "grid", gridTemplateColumns: "180px 1fr 70px", gap: 16, alignItems: "center" }}>
+            <strong style={{ color: "white", fontSize: 18 }}>{labels[index] ?? `Category ${index + 1}`}</strong>
+            <div style={{ height: 18, borderRadius: 999, background: "rgba(255,255,255,.08)", overflow: "hidden" }}>
+              <div style={{ width: `${Math.min(100, value) * p}%`, height: "100%", borderRadius: 999, background: `linear-gradient(90deg, ${color}, white)`, boxShadow: `0 0 22px ${color}77` }} />
+            </div>
+            <span style={{ color, fontSize: 18, fontWeight: 950 }}>{Math.round(value * p)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DataStoryComposition  — main 1280×720 cinematic composition
 // Uses Sequence for proper phase isolation of chart and callout sections.
@@ -917,8 +1180,7 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
   const storyVisual = visual ?? mode;
   const storyAccent = profile.accent;
   const storySecondary = profile.secondary;
-  const outroIn = ilerp(frame, TOTAL_FRAMES - 42, TOTAL_FRAMES - 18);
-  const outroOut = 1 - ilerp(frame, TOTAL_FRAMES - 10, TOTAL_FRAMES);
+  const outroIn = ilerp(frame, TOTAL_FRAMES - 60, TOTAL_FRAMES - 34);
 
   // ── Resolve effective data (live → fallback) ──────────────────────────────
   const effectiveBars = barSeries && barSeries.length > 0 ? barSeries : DEFAULT_BARS;
@@ -945,6 +1207,11 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
   const insightVisible = Math.max(0.72, ilerp(frame, 6, 34));
   const glow = interpolate(frame % 90, [0, 45, 90], [0.2, 0.48, 0.2]);
   const headlineY = interpolate(introVisible, [0, 1], [20, 0]);
+  const sweepX = ((frame * 10) % 1540) - 180;
+  const titleSize = title.length > 24 ? 52 : 60;
+  const narrativeLine = profile.narrative.length > 124
+    ? `${profile.narrative.slice(0, 121).trim()}...`
+    : profile.narrative;
 
   return (
     <AbsoluteFill
@@ -959,11 +1226,46 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
     >
       {/* ── Ambient shimmer particles ───────────────────────────────────── */}
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-        {Array.from({ length: 20 }, (_, i) => {
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            `radial-gradient(circle at 18% 18%, ${storyAccent}36, transparent 28%),` +
+            `radial-gradient(circle at 78% 28%, ${storySecondary}2e, transparent 31%),` +
+            "linear-gradient(120deg, rgba(255,255,255,.035), transparent 42%, rgba(255,255,255,.025))",
+          opacity: 0.95,
+        }} />
+        <svg width="1280" height="720" viewBox="0 0 1280 720" style={{ position: "absolute", inset: 0, opacity: 0.55 }}>
+          <defs>
+            <linearGradient id={`data-sweep-${storyId ?? mode}`} x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%" stopColor={storyAccent} stopOpacity="0" />
+              <stop offset="50%" stopColor={storyAccent} stopOpacity="0.48" />
+              <stop offset="100%" stopColor={storySecondary} stopOpacity="0" />
+            </linearGradient>
+            <pattern id={`data-grid-${storyId ?? mode}`} width="48" height="48" patternUnits="userSpaceOnUse">
+              <path d="M48 0H0V48" fill="none" stroke="rgba(255,255,255,.10)" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="1280" height="720" fill={`url(#data-grid-${storyId ?? mode})`} opacity="0.18" />
+          <line x1={sweepX} y1="0" x2={sweepX + 250} y2="720" stroke={`url(#data-sweep-${storyId ?? mode})`} strokeWidth="3" />
+          {[0, 1, 2].map((i) => (
+            <circle
+              key={i}
+              cx={930 + i * 72}
+              cy={215 + Math.sin(frame * 0.04 + i) * 18}
+              r={88 + i * 34 + Math.sin(frame * 0.035 + i) * 8}
+              fill="none"
+              stroke={i % 2 ? storySecondary : storyAccent}
+              strokeWidth="1.4"
+              opacity={0.11}
+            />
+          ))}
+        </svg>
+        {Array.from({ length: 34 }, (_, i) => {
           const px  = (i * 137.5) % 100;
           const py  = (i * 91.3) % 100;
-          const sz  = 1 + (i % 3);
-          const opc = 0.08 + 0.1 * Math.sin((frame + i * 7) * 0.05);
+          const sz  = 1.5 + (i % 4);
+          const opc = 0.1 + 0.16 * Math.sin((frame + i * 7) * 0.05);
           return (
             <div key={i} style={{
               position: "absolute",
@@ -972,7 +1274,7 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
               borderRadius: "50%",
               background: i % 3 === 0 ? storyAccent : "white",
               opacity: opc,
-              boxShadow: i % 5 === 0 ? `0 0 6px ${storyAccent}` : "none",
+              boxShadow: i % 5 === 0 ? `0 0 12px ${storyAccent}` : "none",
             }} />
           );
         })}
@@ -992,24 +1294,25 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
 
       {/* ── Headline: kicker + title slide up ──────────────────────────── */}
       <div style={{
-        position: "absolute", left: 72, top: 62,
+        position: "absolute", left: 72, top: 54,
         opacity: introVisible,
         transform: `translateY(${headlineY}px)`,
         zIndex: 3,
       }}>
         <div style={{
-          color: storyAccent, fontSize: 20, fontWeight: 900,
-          letterSpacing: ".16em", textTransform: "uppercase" as const,
+          color: storyAccent, fontSize: 16, fontWeight: 950,
+          letterSpacing: ".2em", textTransform: "uppercase" as const,
+          textShadow: `0 0 20px ${storyAccent}66`,
         }}>
           {profile.eyebrow}
         </div>
         <h1 style={{
-          maxWidth: width * 0.62,
-          margin: "18px 0 0",
-          fontSize: Math.min(76, width * 0.055),
-          lineHeight: 0.98,
+          maxWidth: width * 0.58,
+          margin: "12px 0 0",
+          fontSize: titleSize,
+          lineHeight: 0.96,
           letterSpacing: "-.04em",
-          fontWeight: 900,
+          fontWeight: 950,
           textShadow: "0 18px 42px rgba(0,0,0,.42)",
         }}>
           {title}
@@ -1018,9 +1321,9 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
 
       {/* ── KPI card ────────────────────────────────────────────────────── */}
       <div style={{
-        position: "absolute", right: 78, top: 86,
-        width: 220, minHeight: 154,
-        borderRadius: 28,
+        position: "absolute", right: 72, top: 66,
+        width: 212, minHeight: 118,
+        borderRadius: 24,
         border: "1px solid rgba(255,255,255,.18)",
         background: `linear-gradient(145deg, ${storyAccent}36, ${storySecondary}22)`,
         display: "grid", placeItems: "center",
@@ -1032,12 +1335,12 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
       }}>
         <div style={{ textAlign: "center" }}>
           <div style={{
-            fontSize: 15, color: "rgba(255,255,255,.58)",
+            fontSize: 12, color: "rgba(255,255,255,.62)",
             fontWeight: 800, textTransform: "uppercase" as const, letterSpacing: ".12em",
           }}>
             {profile.signal}
           </div>
-          <strong style={{ display: "block", marginTop: 10, fontSize: 46, lineHeight: 1 }}>
+          <strong style={{ display: "block", marginTop: 9, fontSize: 38, lineHeight: 1 }}>
             {metric}
           </strong>
         </div>
@@ -1046,12 +1349,37 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
       {/* ── Chart area — Sequence offsets frame counter for chart phases ─ */}
       <div style={{
         position: "absolute",
-        left: 72, right: 72, top: height * 0.4, bottom: 220,
-        overflow: "visible",
+        left: 72, right: 72, top: 260, bottom: 150,
+        overflow: "hidden",
+        borderRadius: 28,
+        padding: 26,
+        border: "1px solid rgba(255,255,255,.14)",
+        background:
+          `radial-gradient(circle at 70% 28%, ${storyAccent}24, transparent 34%),` +
+          `linear-gradient(145deg, rgba(255,255,255,.10), ${storySecondary}10 48%, rgba(255,255,255,.035))`,
+        boxShadow:
+          `0 30px 90px rgba(0,0,0,.38), inset 0 1px rgba(255,255,255,.16), 0 0 70px ${storyAccent}1f`,
+        backdropFilter: "blur(10px)",
         zIndex: 2,
       }}>
         <Sequence from={CHART_START}>
-          {storyVisual === "stream" ? (
+          {storyVisual === "churn-distribution" ? (
+            <ChurnDistributionStorySection bars={effectiveBars} accent={storyAccent} secondary={storySecondary} />
+          ) : storyVisual === "risk-matrix" ? (
+            <RiskMatrixStorySection values={effectiveBars} accent={storyAccent} secondary={storySecondary} />
+          ) : storyVisual === "feature-force" || storyVisual === "churn-network" ? (
+            <FeatureForceStorySection accent={storyAccent} secondary={storySecondary} />
+          ) : storyVisual === "retention-timeline" ? (
+            <RetentionTimelineStorySection rows={rows ?? []} accent={storyAccent} secondary={storySecondary} />
+          ) : storyVisual === "forecast-horizon" ? (
+            <ForecastHorizonStorySection history={lineSeries ?? []} forecast={barSeries ?? []} months={effectiveMonths} accent={storyAccent} secondary={storySecondary} />
+          ) : storyVisual === "seasonality-wave" ? (
+            <SeasonalityWaveStorySection accent={storyAccent} secondary={storySecondary} />
+          ) : storyVisual === "weekly-cycle" ? (
+            <WeeklyCycleStorySection values={effectiveBars} accent={storyAccent} secondary={storySecondary} />
+          ) : storyVisual === "forecast-category" ? (
+            <ForecastCategoryStorySection bars={effectiveBars} accent={storyAccent} secondary={storySecondary} />
+          ) : storyVisual === "stream" ? (
             <StreamStorySection rows={rows ?? []} accent={storyAccent} secondary={storySecondary} />
           ) : storyVisual === "ranked" || storyVisual === "table" ? (
             <RankedStorySection rows={rows ?? []} bars={effectiveBars} accent={storyAccent} secondary={storySecondary} />
@@ -1087,46 +1415,107 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
       {frame < TOTAL_FRAMES - 36 && (
         <div style={{
           position: "absolute",
-          left: 78,
-          top: 178,
-          maxWidth: 650,
-          fontSize: 22,
-          lineHeight: 1.28,
-          color: "rgba(255,255,255,.76)",
-          fontWeight: 680,
+          left: 72,
+          right: 72,
+          bottom: 92,
+          minHeight: 54,
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          padding: "12px 18px",
+          borderRadius: 18,
+          border: `1px solid ${storyAccent}3f`,
+          background: "linear-gradient(135deg, rgba(5,7,19,.78), rgba(5,7,19,.38))",
+          boxShadow: `0 16px 42px rgba(0,0,0,.32), 0 0 38px ${storyAccent}1f`,
+          backdropFilter: "blur(14px)",
+          fontSize: 18,
+          lineHeight: 1.18,
+          color: "rgba(255,255,255,.84)",
+          fontWeight: 760,
           opacity: insightVisible,
-          textShadow: "0 10px 32px rgba(0,0,0,.38)",
+          textShadow: "0 10px 28px rgba(0,0,0,.42)",
           zIndex: 3,
         }}>
-          {profile.narrative}
+          <span style={{
+            width: 10,
+            height: 10,
+            borderRadius: 999,
+            flex: "0 0 auto",
+            background: storyAccent,
+            boxShadow: `0 0 18px ${storyAccent}`,
+          }} />
+          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {narrativeLine}
+          </span>
         </div>
       )}
 
       {outroIn > 0.01 && (
         <div style={{
           position: "absolute",
-          inset: 34,
+          inset: 0,
           borderRadius: 32,
           display: "grid",
           placeItems: "center",
-          opacity: outroIn * outroOut,
-          background: `radial-gradient(circle at 50% 50%, ${storyAccent}30, rgba(3,5,18,.9) 58%)`,
+          opacity: outroIn,
+          background:
+            `radial-gradient(circle at 50% 42%, ${storyAccent}44, transparent 42%),` +
+            `radial-gradient(circle at 62% 58%, ${storySecondary}26, transparent 48%),` +
+            "linear-gradient(135deg, rgba(2,2,8,.96), rgba(5,6,20,.94))",
           border: `1px solid ${storyAccent}55`,
-          boxShadow: `inset 0 1px rgba(255,255,255,.16), 0 0 54px ${storyAccent}33`,
+          boxShadow: `inset 0 1px rgba(255,255,255,.16), 0 0 90px ${storyAccent}44`,
+          zIndex: 60,
+          pointerEvents: "none",
         }}>
-          <div style={{ textAlign: "center" }}>
+          <div style={{
+            width: "min(820px, 78%)",
+            textAlign: "center",
+            padding: "46px 54px",
+            borderRadius: 34,
+            border: `1px solid ${storyAccent}66`,
+            background: "linear-gradient(145deg, rgba(255,255,255,.14), rgba(255,255,255,.045))",
+            boxShadow: `0 36px 110px rgba(0,0,0,.56), inset 0 1px rgba(255,255,255,.18), 0 0 70px ${storyAccent}33`,
+            backdropFilter: "blur(18px)",
+            transform: `translateY(${(1 - outroIn) * 18}px) scale(${0.96 + outroIn * 0.04})`,
+          }}>
             <div style={{
-              fontSize: 48,
-              lineHeight: 1,
+              margin: "0 auto 22px",
+              width: 74,
+              height: 74,
+              borderRadius: 26,
+              display: "grid",
+              placeItems: "center",
+              color: "white",
+              fontSize: 24,
+              fontWeight: 950,
+              background: `linear-gradient(145deg, ${storyAccent}66, ${storySecondary}44)`,
+              border: `1px solid ${storyAccent}88`,
+              boxShadow: `0 0 48px ${storyAccent}66`,
+            }}>
+              RP
+            </div>
+            <div style={{
+              fontSize: 54,
+              lineHeight: 0.95,
               fontWeight: 950,
               letterSpacing: "-0.045em",
               color: "white",
-              textShadow: `0 0 30px ${storyAccent}66`,
+              textShadow: `0 0 34px ${storyAccent}77`,
             }}>
               {profile.outro}
             </div>
             <div style={{
-              margin: "18px auto 0",
+              marginTop: 16,
+              color: storyAccent,
+              fontSize: 14,
+              fontWeight: 900,
+              letterSpacing: ".22em",
+              textTransform: "uppercase" as const,
+            }}>
+              {profile.signal} / {metric}
+            </div>
+            <div style={{
+              margin: "24px auto 0",
               width: 360 * outroIn,
               height: 2,
               background: `linear-gradient(90deg, transparent, ${storyAccent}, ${storySecondary}, transparent)`,
