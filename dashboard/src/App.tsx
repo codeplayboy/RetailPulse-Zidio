@@ -1459,7 +1459,18 @@ function Panel({
       {createPortal(
         <AnimatePresence>
           {storyOpen ? (
-            <motion.div className="story-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div
+              className="story-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onWheel={(event) => {
+                event.stopPropagation();
+              }}
+              onTouchMove={(event) => {
+                event.stopPropagation();
+              }}
+            >
               <motion.section className="story-surface" role="dialog" aria-modal="true" aria-labelledby={`story-${title.replace(/\W+/g, "-")}`} initial={{ scale: .96, y: 22 }} animate={{ scale: 1, y: 0 }} exit={{ scale: .98, y: 12 }}>
                 <div className="story-head">
                   <div><span>{kicker}</span><h2 id={`story-${title.replace(/\W+/g, "-")}`}>{title} Data Story</h2></div>
@@ -2667,6 +2678,7 @@ function MediaStudioPage() {
             <em>{captioned ? "Captions on" : "Captions off"} / {narration ? "Narration queued" : "Silent preview"}</em>
           </div>
           <Suspense fallback={<div className="story-loading">Loading Remotion preview...</div>}>
+            <div className="media-remotion-frame">
               <ModuleStoryPlayer
                 storyType={moduleStoryType}
                 durationSeconds={duration}
@@ -2697,6 +2709,7 @@ function MediaStudioPage() {
               mrBrandName="RetailPulse"
               mrKeyMetrics={masterMetrics}
             />
+            </div>
           </Suspense>
         </div>
       </section>
