@@ -293,7 +293,10 @@ export interface DataStoryProps {
   lineSeries?: number[];
   lineMonths?: string[];
   barSeries?: number[];
+  barLabels?: string[];
+  profitSeries?: number[];
   donutValues?: number[];
+  donutLabels?: string[];
   donutColors?: string[];
   gaugeValue?: number;
 }
@@ -539,19 +542,41 @@ const BarChartSection: React.FC<{
 
 const DonutChartSection: React.FC<{
   values: number[];
+  labels?: string[];
   colors: string[];
-}> = ({ values, colors }) => (
+}> = ({ values, labels = [], colors }) => (
   <div
     style={{
       width: "100%",
       height: "100%",
-      display: "flex",
+      display: "grid",
+      gridTemplateColumns: "360px 1fr",
+      gap: 34,
       alignItems: "center",
       justifyContent: "center",
     }}
   >
-    <div style={{ width: 330, height: 330 }}>
+    <div style={{ width: 300, height: 300, justifySelf: "center" }}>
       <DonutRevealComposition values={values} colors={colors} />
+    </div>
+    <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
+      {values.slice(0, 5).map((value, index) => (
+        <div key={`${labels[index] ?? index}-${value}`} style={{
+          display: "grid",
+          gridTemplateColumns: "14px 1fr auto",
+          gap: 12,
+          alignItems: "center",
+          minWidth: 0,
+          padding: "9px 12px",
+          borderRadius: 16,
+          background: `linear-gradient(135deg, ${colors[index] ?? colors[0]}22, rgba(255,255,255,.035))`,
+          border: `1px solid ${colors[index] ?? colors[0]}44`,
+        }}>
+          <i style={{ width: 12, height: 12, borderRadius: 999, background: colors[index] ?? colors[0], boxShadow: `0 0 14px ${colors[index] ?? colors[0]}` }} />
+          <strong style={{ color: "white", fontSize: 18, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{labels[index] ?? `Segment ${index + 1}`}</strong>
+          <span style={{ color: colors[index] ?? colors[0], fontSize: 18, fontWeight: 950, whiteSpace: "nowrap" }}>{Math.round(value)}%</span>
+        </div>
+      ))}
     </div>
   </div>
 );
@@ -723,7 +748,7 @@ const StreamStorySection: React.FC<{ rows: string[][]; accent: string; secondary
         return (
           <div key={`${row[0]}-${index}`} style={{
             display: "grid",
-            gridTemplateColumns: "72px 1fr auto",
+            gridTemplateColumns: "72px minmax(0, 1fr) auto",
             alignItems: "center",
             gap: 16,
             padding: "12px 16px",
@@ -740,7 +765,7 @@ const StreamStorySection: React.FC<{ rows: string[][]; accent: string; secondary
             <strong style={{ fontSize: 18, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {row[0]} · {row[1] ?? "Signal"}
             </strong>
-            <em style={{ color: index % 2 ? secondary : accent, fontSize: 13, fontWeight: 900, fontStyle: "normal" }}>
+            <em style={{ color: index % 2 ? secondary : accent, fontSize: 13, fontWeight: 900, fontStyle: "normal", whiteSpace: "nowrap" }}>
               {row[2] ?? "Live"}
             </em>
           </div>
@@ -761,7 +786,7 @@ const RankedStorySection: React.FC<{ rows: string[][]; bars: number[]; accent: s
         return (
           <div key={`${row[0]}-${index}`} style={{
             display: "grid",
-            gridTemplateColumns: "42px 1fr 180px",
+            gridTemplateColumns: "42px minmax(0, 1fr) 180px",
             alignItems: "center",
             gap: 18,
             padding: "8px 12px",
@@ -778,7 +803,7 @@ const RankedStorySection: React.FC<{ rows: string[][]; bars: number[]; accent: s
             }}>{index + 1}</span>
             <div style={{ minWidth: 0 }}>
               <strong style={{ display: "block", fontSize: 17, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row[0]}</strong>
-              <span style={{ fontSize: 13, color: "rgba(255,255,255,.54)", fontWeight: 800 }}>{row[1] ?? "Revenue leader"}</span>
+              <span style={{ display: "block", fontSize: 13, color: "rgba(255,255,255,.54)", fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row[1] ?? "Revenue leader"}</span>
             </div>
             <div style={{ height: 13, borderRadius: 999, background: "rgba(255,255,255,.08)", overflow: "hidden" }}>
               <div style={{
@@ -796,7 +821,7 @@ const RankedStorySection: React.FC<{ rows: string[][]; bars: number[]; accent: s
   );
 };
 
-const VolumeStorySection: React.FC<{ bars: number[]; accent: string; secondary: string }> = ({ bars, accent, secondary }) => {
+const VolumeStorySection: React.FC<{ bars: number[]; labels?: string[]; accent: string; secondary: string }> = ({ bars, labels = [], accent, secondary }) => {
   const frame = useCurrentFrame();
   const values = bars.length ? bars.slice(0, 12) : DEFAULT_BARS;
   const max = Math.max(...values, 1);
@@ -826,13 +851,24 @@ const VolumeStorySection: React.FC<{ bars: number[]; accent: string; secondary: 
           const p = Math.max(0.36, spring({ frame: frame - index * 4, fps: 30, config: { damping: 22, stiffness: 105 } }));
           const h = Math.max(24, (value / max) * 210 * p);
           return (
-            <div key={index} style={{
-              height: h,
-              borderRadius: "12px 12px 4px 4px",
-              background: `linear-gradient(180deg, ${secondary}, ${accent})`,
-              boxShadow: `0 ${18 + h * .05}px 46px ${accent}55, inset 0 1px rgba(255,255,255,.45)`,
-              transform: `translateZ(${h * .22}px) rotateY(${Math.sin(frame * 0.035 + index) * 3}deg)`,
-            }} />
+            <div key={index} style={{ position: "relative", height: h }}>
+              <div style={{
+                height: "100%",
+                borderRadius: "12px 12px 4px 4px",
+                background: `linear-gradient(180deg, ${secondary}, ${accent})`,
+                boxShadow: `0 ${18 + h * .05}px 46px ${accent}55, inset 0 1px rgba(255,255,255,.45)`,
+                transform: `translateZ(${h * .22}px) rotateY(${Math.sin(frame * 0.035 + index) * 3}deg)`,
+              }} />
+              <span style={{
+                position: "absolute",
+                left: "50%",
+                bottom: -34,
+                transform: "translateX(-50%) rotateZ(10deg)",
+                color: "rgba(255,255,255,.72)",
+                fontSize: 13,
+                fontWeight: 950,
+              }}>{labels[index] ?? index + 1}</span>
+            </div>
           );
         })}
       </div>
@@ -840,9 +876,10 @@ const VolumeStorySection: React.FC<{ bars: number[]; accent: string; secondary: 
   );
 };
 
-const MonthlyStorySection: React.FC<{ bars: number[]; accent: string; secondary: string }> = ({ bars, accent, secondary }) => {
+const MonthlyStorySection: React.FC<{ bars: number[]; profits?: number[]; labels?: string[]; accent: string; secondary: string }> = ({ bars, profits = [], labels = [], accent, secondary }) => {
   const frame = useCurrentFrame();
   const values = bars.length ? bars.slice(-7) : DEFAULT_BARS;
+  const profitValues = profits.length ? profits.slice(-7) : values.map((value, index) => Math.max(12, value * (0.42 + (index % 3) * 0.08)));
   const max = Math.max(...values, 1);
   const points = values.map((value, index) => ({
     x: 45 + ((938 - 45) / Math.max(values.length - 1, 1)) * index,
@@ -868,11 +905,12 @@ const MonthlyStorySection: React.FC<{ bars: number[]; accent: string; secondary:
         {values.map((value, index) => {
           const p = Math.max(0.34, spring({ frame: frame - index * 6, fps: 30, config: { damping: 24, stiffness: 115 } }));
           const revenueH = Math.max(18, (value / max) * 210 * p);
-          const profitH = Math.max(10, revenueH * (0.36 + (index % 3) * 0.07));
+          const profitH = Math.max(10, (profitValues[index] / max) * 210 * p);
           return (
             <div key={index} style={{ position: "relative", height: 230, display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 8 }}>
               <div style={{ width: "34%", height: revenueH, borderRadius: "16px 16px 5px 5px", background: `linear-gradient(180deg, #fde68a, ${accent} 48%, #7c2d12)`, boxShadow: `0 0 28px ${accent}66, inset 0 1px rgba(255,255,255,.55)` }} />
               <div style={{ width: "34%", height: profitH, borderRadius: "16px 16px 5px 5px", background: `linear-gradient(180deg, #f9a8d4, ${secondary} 54%, #831843)`, boxShadow: `0 0 28px ${secondary}55, inset 0 1px rgba(255,255,255,.45)` }} />
+              <span style={{ position: "absolute", left: 0, right: 0, bottom: -20, color: "rgba(255,255,255,.58)", fontSize: 12, fontWeight: 950, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{labels[index] ?? index + 1}</span>
             </div>
           );
         })}
@@ -1057,10 +1095,10 @@ const RetentionTimelineStorySection: React.FC<{ rows: string[][]; accent: string
         const p = Math.max(0.28, spring({ frame: frame - index * 11, fps: 30, config: { damping: 24, stiffness: 105 } }));
         const color = index < 2 ? accent : secondary;
         return (
-          <div key={`${row[0]}-${index}`} style={{ display: "grid", gridTemplateColumns: "96px 1fr 210px", alignItems: "center", gap: 16, padding: "13px 16px", borderRadius: 20, border: `1px solid ${color}44`, background: `linear-gradient(135deg, ${color}20, rgba(255,255,255,.04))`, opacity: p, transform: `translateX(${(1 - p) * -24}px)`, boxShadow: `0 16px 44px rgba(0,0,0,.24), 0 0 26px ${color}22` }}>
+          <div key={`${row[0]}-${index}`} style={{ display: "grid", gridTemplateColumns: "96px minmax(0, 1fr) 190px", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 20, border: `1px solid ${color}44`, background: `linear-gradient(135deg, ${color}20, rgba(255,255,255,.04))`, opacity: p, transform: `translateX(${(1 - p) * -24}px)`, boxShadow: `0 16px 44px rgba(0,0,0,.24), 0 0 26px ${color}22` }}>
             <strong style={{ color, fontSize: 17 }}>{row[0]}</strong>
-            <span style={{ color: "white", fontSize: 18, fontWeight: 900 }}>{row[2] ?? row[4] ?? "Retention action"}</span>
-            <em style={{ color: "rgba(255,255,255,.62)", fontStyle: "normal", fontSize: 14, fontWeight: 900 }}>{row[1] ?? "Risk"}</em>
+            <span style={{ color: "white", fontSize: 17, fontWeight: 900, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row[2] ?? row[4] ?? "Retention action"}</span>
+            <em style={{ color: "rgba(255,255,255,.62)", fontStyle: "normal", fontSize: 13, fontWeight: 900, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row[1] ?? "Risk"}</em>
           </div>
         );
       })}
@@ -1088,25 +1126,31 @@ const ForecastHorizonStorySection: React.FC<{ history: number[]; forecast: numbe
   );
 };
 
-const SeasonalityWaveStorySection: React.FC<{ accent: string; secondary: string }> = ({ accent, secondary }) => {
+const SeasonalityWaveStorySection: React.FC<{ values?: number[]; labels?: string[]; accent: string; secondary: string }> = ({ values = [], labels = [], accent, secondary }) => {
   const frame = useCurrentFrame();
-  const wave = (amp: number, y: number, phase: number) => Array.from({ length: 36 }, (_, i) => {
-    const x = 45 + i * 25;
-    const yy = y + Math.sin(i * .55 + phase + frame * .045) * amp;
+  const source = values.length >= 2 ? values.slice(-10) : [42, 48, 45, 58, 61, 57, 66, 70];
+  const max = Math.max(...source, 1);
+  const min = Math.min(...source, 0);
+  const range = max - min || 1;
+  const wave = (amp: number, y: number, phase: number) => source.map((value, i) => {
+    const x = 65 + i * (850 / Math.max(source.length - 1, 1));
+    const base = y - ((value - min) / range) * 108;
+    const yy = base + Math.sin(i * .55 + phase + frame * .045) * amp;
     return `${i ? "L" : "M"}${x.toFixed(1)},${yy.toFixed(1)}`;
   }).join(" ");
   return (
     <svg viewBox="0 0 980 320" width="100%" height="100%">
       <path d={wave(42, 146, 0)} fill="none" stroke={accent} strokeWidth="6" strokeLinecap="round" opacity=".9" style={{ filter: `drop-shadow(0 0 18px ${accent})` }} />
       <path d={wave(26, 178, 1.8)} fill="none" stroke={secondary} strokeWidth="4" strokeLinecap="round" opacity=".72" strokeDasharray="14 10" />
-      {["Trend", "Weekly", "Monthly"].map((label, i) => <text key={label} x={110 + i * 260} y={72 + i * 54} fill={i ? secondary : accent} fontSize="25" fontWeight="950">{label}</text>)}
+      {source.map((_, i) => <text key={i} x={65 + i * (850 / Math.max(source.length - 1, 1))} y="300" textAnchor="middle" fill="rgba(255,255,255,.5)" fontSize="13" fontWeight="900">{labels[i] ?? `T${i + 1}`}</text>)}
+      {["Live trend", "Seasonal wave"].map((label, i) => <text key={label} x={110 + i * 300} y={72 + i * 54} fill={i ? secondary : accent} fontSize="25" fontWeight="950">{label}</text>)}
     </svg>
   );
 };
 
-const WeeklyCycleStorySection: React.FC<{ values: number[]; accent: string; secondary: string }> = ({ values, accent, secondary }) => {
+const WeeklyCycleStorySection: React.FC<{ values: number[]; labels?: string[]; accent: string; secondary: string }> = ({ values, labels: inputLabels = [], accent, secondary }) => {
   const frame = useCurrentFrame();
-  const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const labels = inputLabels.length ? inputLabels : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const source = (values.length ? values : [48, 56, 62, 60, 74, 88, 69]).slice(0, 7);
   return (
     <svg viewBox="0 0 980 320" width="100%" height="100%">
@@ -1137,8 +1181,8 @@ const ForecastCategoryStorySection: React.FC<{ labels?: string[]; bars: number[]
         const p = Math.max(.24, spring({ frame: frame - index * 8, fps: 30, config: { damping: 22, stiffness: 110 } }));
         const color = index % 2 ? secondary : accent;
         return (
-          <div key={index} style={{ display: "grid", gridTemplateColumns: "180px 1fr 70px", gap: 16, alignItems: "center" }}>
-            <strong style={{ color: "white", fontSize: 18 }}>{labels[index] ?? `Category ${index + 1}`}</strong>
+          <div key={index} style={{ display: "grid", gridTemplateColumns: "180px minmax(0, 1fr) 70px", gap: 16, alignItems: "center", minWidth: 0 }}>
+            <strong style={{ color: "white", fontSize: 18, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{labels[index] ?? `Category ${index + 1}`}</strong>
             <div style={{ height: 18, borderRadius: 999, background: "rgba(255,255,255,.08)", overflow: "hidden" }}>
               <div style={{ width: `${Math.min(100, value) * p}%`, height: "100%", borderRadius: 999, background: `linear-gradient(90deg, ${color}, white)`, boxShadow: `0 0 22px ${color}77` }} />
             </div>
@@ -1170,7 +1214,10 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
   lineSeries,
   lineMonths,
   barSeries,
+  barLabels,
+  profitSeries,
   donutValues,
+  donutLabels,
   donutColors,
   gaugeValue,
 }) => {
@@ -1180,7 +1227,8 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
   const storyVisual = visual ?? mode;
   const storyAccent = profile.accent;
   const storySecondary = profile.secondary;
-  const outroIn = ilerp(frame, TOTAL_FRAMES - 60, TOTAL_FRAMES - 34);
+  const outroIn = ilerp(frame, TOTAL_FRAMES - 54, TOTAL_FRAMES - 34);
+  const outroReadability = Math.min(1, outroIn * 1.65);
 
   // ── Resolve effective data (live → fallback) ──────────────────────────────
   const effectiveBars = barSeries && barSeries.length > 0 ? barSeries : DEFAULT_BARS;
@@ -1343,6 +1391,31 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
           <strong style={{ display: "block", marginTop: 9, fontSize: 38, lineHeight: 1 }}>
             {metric}
           </strong>
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            marginTop: 10,
+            padding: "6px 10px",
+            borderRadius: 999,
+            border: `1px solid ${storyAccent}55`,
+            background: "rgba(4,7,20,.42)",
+            color: "rgba(255,255,255,.76)",
+            fontSize: 9,
+            fontWeight: 950,
+            letterSpacing: ".12em",
+            textTransform: "uppercase" as const,
+            whiteSpace: "nowrap",
+          }}>
+            <span style={{
+              width: 6,
+              height: 6,
+              borderRadius: 999,
+              background: storyAccent,
+              boxShadow: `0 0 12px ${storyAccent}`,
+            }} />
+            Live dashboard data
+          </div>
         </div>
       </div>
 
@@ -1374,19 +1447,19 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
           ) : storyVisual === "forecast-horizon" ? (
             <ForecastHorizonStorySection history={lineSeries ?? []} forecast={barSeries ?? []} months={effectiveMonths} accent={storyAccent} secondary={storySecondary} />
           ) : storyVisual === "seasonality-wave" ? (
-            <SeasonalityWaveStorySection accent={storyAccent} secondary={storySecondary} />
+            <SeasonalityWaveStorySection values={lineSeries} labels={effectiveMonths} accent={storyAccent} secondary={storySecondary} />
           ) : storyVisual === "weekly-cycle" ? (
-            <WeeklyCycleStorySection values={effectiveBars} accent={storyAccent} secondary={storySecondary} />
+            <WeeklyCycleStorySection values={effectiveBars} labels={barLabels} accent={storyAccent} secondary={storySecondary} />
           ) : storyVisual === "forecast-category" ? (
-            <ForecastCategoryStorySection bars={effectiveBars} accent={storyAccent} secondary={storySecondary} />
+            <ForecastCategoryStorySection labels={barLabels} bars={effectiveBars} accent={storyAccent} secondary={storySecondary} />
           ) : storyVisual === "stream" ? (
             <StreamStorySection rows={rows ?? []} accent={storyAccent} secondary={storySecondary} />
           ) : storyVisual === "ranked" || storyVisual === "table" ? (
             <RankedStorySection rows={rows ?? []} bars={effectiveBars} accent={storyAccent} secondary={storySecondary} />
           ) : storyVisual === "volume" ? (
-            <VolumeStorySection bars={effectiveBars} accent={storyAccent} secondary={storySecondary} />
+            <VolumeStorySection bars={effectiveBars} labels={barLabels} accent={storyAccent} secondary={storySecondary} />
           ) : storyVisual === "monthly" ? (
-            <MonthlyStorySection bars={effectiveBars} accent={storyAccent} secondary={storySecondary} />
+            <MonthlyStorySection bars={effectiveBars} profits={profitSeries} labels={barLabels} accent={storyAccent} secondary={storySecondary} />
           ) : storyVisual === "heatmap" ? (
             <HeatStorySection values={effectiveBars} accent={storyAccent} secondary={storySecondary} />
           ) : storyVisual === "network" || storyVisual === "scatter" ? (
@@ -1394,7 +1467,7 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
           ) : storyVisual === "timeline" || storyVisual === "bars" || mode === "bars" ? (
             <BarChartSection bars={effectiveBars} accent={storyAccent} />
           ) : storyVisual === "donut" || mode === "donut" ? (
-            <DonutChartSection values={effectiveDonutValues} colors={effectiveDonutColors} />
+            <DonutChartSection values={effectiveDonutValues} labels={donutLabels} colors={effectiveDonutColors} />
           ) : storyVisual === "gauge" || mode === "gauge" ? (
             <GaugeChartSection value={effectiveGaugeValue} accent={storyAccent} />
           ) : (
@@ -1450,18 +1523,18 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
         </div>
       )}
 
-      {outroIn > 0.01 && (
+      {outroIn > 0.08 && (
         <div style={{
           position: "absolute",
           inset: 0,
           borderRadius: 32,
           display: "grid",
           placeItems: "center",
-          opacity: outroIn,
+          opacity: outroReadability,
           background:
             `radial-gradient(circle at 50% 42%, ${storyAccent}44, transparent 42%),` +
             `radial-gradient(circle at 62% 58%, ${storySecondary}26, transparent 48%),` +
-            "linear-gradient(135deg, rgba(2,2,8,.96), rgba(5,6,20,.94))",
+            "linear-gradient(135deg, rgba(2,2,8,.985), rgba(5,6,20,.98))",
           border: `1px solid ${storyAccent}55`,
           boxShadow: `inset 0 1px rgba(255,255,255,.16), 0 0 90px ${storyAccent}44`,
           zIndex: 60,
@@ -1476,6 +1549,7 @@ export const DataStoryComposition: React.FC<DataStoryProps> = ({
             background: "linear-gradient(145deg, rgba(255,255,255,.14), rgba(255,255,255,.045))",
             boxShadow: `0 36px 110px rgba(0,0,0,.56), inset 0 1px rgba(255,255,255,.18), 0 0 70px ${storyAccent}33`,
             backdropFilter: "blur(18px)",
+            opacity: outroReadability,
             transform: `translateY(${(1 - outroIn) * 18}px) scale(${0.96 + outroIn * 0.04})`,
           }}>
             <div style={{
@@ -1547,7 +1621,10 @@ export function DataStoryPlayer({
   lineSeries,
   lineMonths,
   barSeries,
+  barLabels,
+  profitSeries,
   donutValues,
+  donutLabels,
   donutColors,
   gaugeValue,
 }: DataStoryProps) {
@@ -1561,8 +1638,8 @@ export function DataStoryPlayer({
       inputProps={{
         title, kicker, metric, mode, accent,
         visual, storyId, narrative, outro, rows, secondaryAccent,
-        lineSeries, lineMonths, barSeries,
-        donutValues, donutColors, gaugeValue,
+        lineSeries, lineMonths, barSeries, barLabels, profitSeries,
+        donutValues, donutLabels, donutColors, gaugeValue,
       }}
       controls
       loop

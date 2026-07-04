@@ -683,15 +683,16 @@ function usePageAnimation(root: React.RefObject<HTMLDivElement | null>, deps: un
   useGSAP(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const q = gsap.utils.selector(root);
-    const dur = reduceMotion ? 0.001 : 0.42;
-    gsap.defaults({ ease: "power3.out", duration: dur });
+    const compactViewport = window.innerWidth < 900;
+    const dur = reduceMotion || compactViewport ? 0.001 : 0.5;
+    gsap.defaults({ ease: "power2.out", duration: dur });
 
-    const entranceTargets = q(".animate-in");
+    const entranceTargets = q(".animate-in:not(.topbar)");
     if (entranceTargets.length) {
       gsap.fromTo(
         entranceTargets,
-        { y: 24, opacity: 0, scale: 0.97 },
-        { y: 0, opacity: 1, scale: 1, stagger: 0.035 },
+        { y: 10, opacity: 0 },
+        { y: 0, opacity: 1, stagger: compactViewport ? 0 : 0.025, overwrite: "auto" },
       );
     }
 
@@ -722,7 +723,8 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
       ".scatter",
       ".gauge",
       ".lux-table",
-      ".activity-feed"
+      ".activity-feed",
+      ".volume-bars-3d"
     ].join(", ");
 
     if (reduceMotion) {
@@ -733,16 +735,93 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
       return;
     }
 
+    const mobileScrollRoot = window.innerWidth < 900
+      ? scope.querySelector<HTMLElement>(".workspace")
+      : null;
+
+    const getVisibilityState = (panel: HTMLElement) => {
+      const rootRect = mobileScrollRoot?.getBoundingClientRect();
+      const visibleTop = rootRect?.top ?? 0;
+      const visibleBottom = rootRect?.bottom ?? window.innerHeight;
+      const enterMargin = Math.min(90, window.innerHeight * 0.1);
+      const resetMargin = Math.min(260, window.innerHeight * 0.28);
+      const rect = panel.getBoundingClientRect();
+
+      return {
+        enters: rect.top < visibleBottom - enterMargin && rect.bottom > visibleTop + enterMargin,
+        exits: rect.bottom < visibleTop - resetMargin || rect.top > visibleBottom + resetMargin,
+      };
+    };
+
+    let scrollFrame = 0;
+    let scrollWatchTimer = 0;
+    let lastScrollTop = -1;
+    const readScrollTop = () => mobileScrollRoot?.scrollTop ?? window.scrollY;
+    let previousScrollTop = readScrollTop();
+    let scrollDirection: "down" | "up" = "down";
+
+    const setScrollDirection = (direction: "down" | "up") => {
+      scrollDirection = direction;
+      scope.classList.toggle("scrolling-down", direction === "down");
+      scope.classList.toggle("scrolling-up", direction === "up");
+    };
+
+    const syncBloomState = () => {
+      scrollFrame = 0;
+      scope.querySelectorAll<HTMLElement>(".panel.chart-bloom").forEach((panel) => {
+        const { enters } = getVisibilityState(panel);
+        if (enters) {
+          panel.classList.add("is-bloomed");
+          panel.dataset.bloomedOnce = "true";
+        }
+      });
+    };
+
+    const scheduleBloomSync = () => {
+      if (scrollFrame) return;
+      scrollFrame = window.requestAnimationFrame(syncBloomState);
+    };
+
+    const watchScrollSettle = () => {
+      const currentScrollTop = readScrollTop();
+      if (Math.abs(currentScrollTop - lastScrollTop) > 0.5) {
+        lastScrollTop = currentScrollTop;
+        syncBloomState();
+        scrollWatchTimer = window.setTimeout(watchScrollSettle, 90);
+      } else {
+        scrollWatchTimer = 0;
+      }
+    };
+
+    const startScrollWatch = () => {
+      const currentScrollTop = readScrollTop();
+      setScrollDirection(currentScrollTop >= previousScrollTop ? "down" : "up");
+      previousScrollTop = currentScrollTop;
+      if (scrollDirection !== "down") return;
+      scheduleBloomSync();
+      if (scrollWatchTimer) return;
+      lastScrollTop = -1;
+      scrollWatchTimer = window.setTimeout(watchScrollSettle, 34);
+    };
+
+    const handleWheelDirection = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) < 1) return;
+      setScrollDirection(event.deltaY > 0 ? "down" : "up");
+      if (event.deltaY > 0) startScrollWatch();
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
           const panel = entry.target as HTMLElement;
-          panel.classList.add("is-bloomed");
-          observer.unobserve(panel);
+          if (entry.isIntersecting) {
+            panel.classList.add("is-bloomed");
+            panel.dataset.bloomedOnce = "true";
+            return;
+          }
         });
       },
-      { root: null, threshold: 0.22, rootMargin: "0px 0px -8% 0px" }
+      { root: mobileScrollRoot, threshold: [0, 0.12, 0.34], rootMargin: "0px 0px -6% 0px" }
     );
 
     const tagPanels = () => {
@@ -751,9 +830,10 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
         if (panel.classList.contains("chart-bloom")) return;
         if (!panel.querySelector(chartSelector)) return;
         panel.classList.add("chart-bloom");
-        panel.style.setProperty("--bloom-delay", `${Math.min(0.18, index * 0.018)}s`);
+        panel.style.setProperty("--bloom-delay", `${Math.min(0.1, index * 0.012)}s`);
         observer.observe(panel);
       });
+      scheduleBloomSync();
     };
 
     tagPanels();
@@ -762,13 +842,23 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
     const settledTimer = window.setTimeout(tagPanels, 700);
     const mutationObserver = new MutationObserver(tagPanels);
     mutationObserver.observe(scope, { childList: true, subtree: true });
+    const scrollTarget: Window | HTMLElement = mobileScrollRoot ?? window;
+    scrollTarget.addEventListener("scroll", startScrollWatch, { passive: true });
+    window.addEventListener("wheel", handleWheelDirection, { passive: true });
+    window.addEventListener("resize", startScrollWatch);
 
     return () => {
       observer.disconnect();
       mutationObserver.disconnect();
       window.cancelAnimationFrame(frame);
+      if (scrollFrame) window.cancelAnimationFrame(scrollFrame);
+      if (scrollWatchTimer) window.clearTimeout(scrollWatchTimer);
       window.clearTimeout(shortTimer);
       window.clearTimeout(settledTimer);
+      scrollTarget.removeEventListener("scroll", startScrollWatch);
+      window.removeEventListener("wheel", handleWheelDirection);
+      window.removeEventListener("resize", startScrollWatch);
+      scope.classList.remove("scrolling-down", "scrolling-up");
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
@@ -783,6 +873,23 @@ function SkeletonDashboard() {
     <div className="skeleton-grid">
       {Array.from({ length: 8 }).map((_, i) => <span key={i} />)}
     </div>
+  );
+}
+
+function DataLoadError({ message }: { message: string }) {
+  return (
+    <section className="data-error-panel">
+      <span className="data-error-icon"><Database size={28} /></span>
+      <div>
+        <p className="eyebrow">DATA SOURCE CHECK FAILED</p>
+        <h2>RetailPulse could not load the integrated datasets.</h2>
+        <p>
+          The dashboard is blocked from showing fallback demo numbers. Fix the missing CSV or schema issue,
+          then refresh the preview to restore the live integrated dashboard.
+        </p>
+        <code>{message}</code>
+      </div>
+    </section>
   );
 }
 
@@ -1218,19 +1325,20 @@ function Control({ icon: Icon, title, value }: { icon?: typeof Activity; title: 
 }
 
 function KpiGrid({ items = kpis }: { items?: typeof kpis }) {
-  const { anomalyLens, replayProgress } = useLivingOS();
+  const { anomalyLens, replayProgress, performanceTier, reducedMotion } = useLivingOS();
+  const shouldAnimate = !reducedMotion && performanceTier !== "minimal";
   return (
     <section className="kpi-grid animate-in">
       {items.map(({ label, value, delta, icon: Icon, tone }, index) => (
         <motion.article
           key={label}
-          layout
+          layout={shouldAnimate}
           className={`metric-card tone-${tone} ${anomalyLens && (tone === "danger" || index === 1) ? "anomaly-hit" : ""}`}
           style={{ "--replay": replayProgress / 100 } as CSSProperties}
-          initial={{ opacity: 0, y: 16, scale: 0.97 }}
+          initial={shouldAnimate ? { opacity: 0, y: 14 } : false}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 26, delay: index * 0.035 }}
-          whileHover={{ y: -6, rotateX: 2, transition: { type: "spring", stiffness: 260, damping: 22, delay: 0 } }}
+          transition={{ duration: shouldAnimate ? 0.46 : 0, ease: [0.22, 1, 0.36, 1], delay: shouldAnimate ? index * 0.06 : 0 }}
+          whileHover={shouldAnimate ? { y: -7, scale: 1.025, transition: { type: "spring", stiffness: 420, damping: 20 } } : undefined}
         >
           <div className="metric-top"><span><Icon size={18} /></span></div>
           <AnimatedValue value={value} />
@@ -1255,10 +1363,10 @@ function TrendIndicator({ value }: { value: string }) {
     const valueLabel = root.current.querySelector(".trend-value");
     const movement = direction === "positive" ? -4 : direction === "negative" ? 4 : 0;
 
-    gsap.fromTo(root.current, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: .48, ease: "power3.out" });
-    gsap.fromTo(valueLabel, { scale: .92 }, { scale: 1, duration: .55, ease: "back.out(1.8)" });
+    gsap.fromTo(root.current, { autoAlpha: 0, y: 4 }, { autoAlpha: 1, y: 0, duration: .34, ease: "power2.out" });
+    gsap.fromTo(valueLabel, { autoAlpha: .82 }, { autoAlpha: 1, duration: .28, ease: "power2.out" });
 
-    gsap.fromTo(icon, { y: -movement, scale: .7 }, { y: 0, scale: 1, duration: .7, ease: "back.out(2)" });
+    gsap.fromTo(icon, { y: -movement, autoAlpha: .72 }, { y: 0, autoAlpha: 1, duration: .38, ease: "power2.out" });
   }, { scope: root, dependencies: [direction, value, reducedMotion], revertOnUpdate: true });
 
   return (
@@ -1267,10 +1375,10 @@ function TrendIndicator({ value }: { value: string }) {
         <motion.span
           key={direction}
           className="trend-icon"
-          initial={{ opacity: 0, y: -8, scale: 0.8 }}
+          initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 8, scale: 0.7 }}
-          transition={{ type: "spring", stiffness: 400, damping: 25, duration: 0.25 }}
+          exit={{ opacity: 0, y: 4 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
         ><TrendIcon size={17} strokeWidth={2.6} /></motion.span>
       </AnimatePresence>
       <strong className="trend-value">{value}</strong>
@@ -1296,7 +1404,10 @@ type StorySpec = {
   lineSeries?: number[];
   lineMonths?: string[];
   barSeries?: number[];
+  barLabels?: string[];
+  profitSeries?: number[];
   donutValues?: number[];
+  donutLabels?: string[];
   donutColors?: string[];
   gaugeValue?: number;
 };
@@ -1312,22 +1423,22 @@ function getPanelStorySpec(title: string): StorySpec {
   }
   if (normalized.includes("product category")) {
     const topShare = d.categoryValues.length > 0 ? `${d.categoryValues[0].toFixed(1)}%` : "Top share";
-    return { mode: "donut", visual: "donut", storyId: "product-category", metric: topShare, donutValues: d.categoryValues, donutColors, accent: "#a855f7", secondaryAccent: "#34d399", narrative: "Revenue share splits by category so the strongest product family becomes instantly visible.", outro: "Category mix decoded." };
+    return { mode: "donut", visual: "donut", storyId: "product-category", metric: topShare, donutValues: d.categoryValues, donutLabels: d.categoryLabels, donutColors, accent: "#a855f7", secondaryAccent: "#34d399", narrative: `Live category mix: ${d.categoryLabels.slice(0, 3).join(", ")} lead the visible product-share chart.`, outro: "Category mix decoded." };
   }
   if (normalized.includes("live activity feed") || normalized.includes("stock alerts") || normalized.includes("export queue")) {
     return { mode: "bars", visual: "stream", storyId: "activity-feed", metric: "Live", rows: streamRows, accent: "#22c55e", secondaryAccent: "#60a5fa", narrative: "Live operational events replay in sequence across models, inventory, customers, and reporting.", outro: "Event stream synchronized." };
   }
   if (normalized.includes("monthly performance")) {
-    return { mode: "bars", visual: "monthly", storyId: "monthly-performance", metric: d.hero.overview.tertiary, barSeries: d.bars.slice(-7), accent: "#f59e0b", secondaryAccent: "#ec4899", narrative: "Revenue and profit rise together month by month, making margin movement readable instead of hidden.", outro: "Monthly performance packaged." };
+    return { mode: "bars", visual: "monthly", storyId: "monthly-performance", metric: d.hero.overview.tertiary, barSeries: d.bars.slice(-7), profitSeries: d.profitBars.slice(-7), barLabels: d.barMonths.slice(-7), accent: "#f59e0b", secondaryAccent: "#ec4899", narrative: "The video uses the same revenue and profit bars shown in this monthly chart, then adds the trend overlay for context.", outro: "Monthly performance packaged." };
   }
   if (normalized.includes("top selling")) {
     return { mode: "bars", visual: "ranked", storyId: "top-selling-products", metric: d.navStats.overview, rows: d.topProductsRows.slice(0, 5), barSeries: d.horizontalBarValues, accent: "#fbbf24", secondaryAccent: "#22d3ee", narrative: "Products are ranked by total revenue contribution to show which SKUs are carrying the business.", outro: "Leaderboard locked." };
   }
   if (normalized.includes("3d volume") || normalized.includes("volume analysis")) {
-    return { mode: "bars", visual: "volume", storyId: "volume-analysis", metric: d.hero.overview.tertiary, barSeries: d.bars, accent: "#8b5cf6", secondaryAccent: "#22d3ee", narrative: "The same volume signal becomes a dimensional field, revealing intensity and depth across the operating period.", outro: "Volume field mapped." };
+    return { mode: "bars", visual: "volume", storyId: "volume-analysis", metric: d.hero.overview.tertiary, barSeries: d.bars, barLabels: d.barMonths, accent: "#8b5cf6", secondaryAccent: "#22d3ee", narrative: "The video maps the exact same 3D volume percentages and month labels used by the visible volume bars.", outro: "Volume field mapped." };
   }
   if (normalized.includes("segment distribution")) {
-    return { mode: "donut", visual: "donut", storyId: "segment-distribution", metric: d.navStats.segmentation, donutValues: d.segmentValues, donutColors, accent: "#c084fc", secondaryAccent: "#f472b6", narrative: "Customer segments separate into weighted cohorts for targeting, retention, and value expansion.", outro: "Segment distribution resolved." };
+    return { mode: "donut", visual: "donut", storyId: "segment-distribution", metric: d.navStats.segmentation, donutValues: d.segmentValues, donutLabels: d.segmentLabels, donutColors, accent: "#c084fc", secondaryAccent: "#f472b6", narrative: `The story uses the same customer segment distribution visible in this panel: ${d.segmentLabels.slice(0, 3).join(", ")}.`, outro: "Segment distribution resolved." };
   }
   if (normalized.includes("customer lifetime")) {
     return { mode: "bars", visual: "ranked", storyId: "customer-lifetime-value", metric: d.hero.segmentation.secondary, rows: d.horizontalBarLabels.slice(0, 5).map((label, index) => [label, `${d.horizontalBarValues[index] ?? 0}`, "CLV"]), barSeries: d.horizontalBarValues, accent: "#34d399", secondaryAccent: "#a855f7", narrative: "Customer value tiers rank by contribution so priority segments are clear.", outro: "CLV ranking complete." };
@@ -1357,16 +1468,16 @@ function getPanelStorySpec(title: string): StorySpec {
     return { mode: "bars", visual: "heatmap", storyId: "heatmap-story", metric: d.hero.inventory.tertiary, barSeries: d.heat, accent: "#34d399", secondaryAccent: "#f59e0b", narrative: "Dense operational signals convert into a heat field to expose pressure, concentration, and opportunity.", outro: "Heat field analyzed." };
   }
   if (normalized.includes("historical demand") || normalized.includes("demand + forecast")) {
-    return { mode: "line", visual: "forecast-horizon", storyId: "historical-demand-forecast-horizon", metric: d.navStats.forecasting, lineSeries: d.compareSeries.slice(-8), barSeries: d.revenueSeries.slice(-7), lineMonths: d.revenueMonths, accent: "#22d3ee", secondaryAccent: "#34d399", narrative: "Historical demand hands off into the forward planning horizon with confidence context.", outro: "Demand horizon calibrated." };
+    return { mode: "line", visual: "forecast-horizon", storyId: "historical-demand-forecast-horizon", metric: d.navStats.forecasting, lineSeries: d.compareSeries.slice(-8), barSeries: d.revenueSeries.slice(-7), lineMonths: d.revenueMonths, accent: "#22d3ee", secondaryAccent: "#34d399", narrative: "Historical demand and forecast context are pulled from the same dashboard demand and forecast series.", outro: "Demand horizon calibrated." };
   }
   if (normalized.includes("seasonal trend")) {
-    return { mode: "line", visual: "seasonality-wave", storyId: "seasonality-wave-model", metric: d.hero.forecasting.secondary, accent: "#22d3ee", secondaryAccent: "#fbbf24", narrative: "Seasonality is shown as layered demand waves so rolling movement feels different from a normal line chart.", outro: "Seasonality pattern identified." };
+    return { mode: "line", visual: "seasonality-wave", storyId: "seasonality-wave-model", metric: d.hero.forecasting.secondary, lineSeries: d.compactSeries, lineMonths: d.revenueMonths, accent: "#22d3ee", secondaryAccent: "#fbbf24", narrative: "The seasonal story uses the same compact trend signal from the seasonal chart, rendered as a layered demand wave.", outro: "Seasonality pattern identified." };
   }
   if (normalized.includes("weekly trend")) {
-    return { mode: "bars", visual: "weekly-cycle", storyId: "weekly-demand-cycle", metric: d.hero.forecasting.tertiary, barSeries: d.bars.slice(-7), accent: "#60a5fa", secondaryAccent: "#34d399", narrative: "Weekly demand rotates through a seven-day cycle, highlighting where operational pressure peaks.", outro: "Weekly cycle mapped." };
+    return { mode: "bars", visual: "weekly-cycle", storyId: "weekly-demand-cycle", metric: d.hero.forecasting.tertiary, barSeries: d.bars.slice(-7), barLabels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], accent: "#60a5fa", secondaryAccent: "#34d399", narrative: "The same seven bars from the weekly trend panel are replayed as a radial operating cycle.", outro: "Weekly cycle mapped." };
   }
   if (normalized.includes("category forecast")) {
-    return { mode: "bars", visual: "forecast-category", storyId: "category-forecast-bars", metric: d.navStats.forecasting, barSeries: d.forecastCategoryValues, accent: "#34d399", secondaryAccent: "#22d3ee", narrative: "Projected demand by product line ranks category pressure for planning and replenishment.", outro: "Category forecast ranked." };
+    return { mode: "bars", visual: "forecast-category", storyId: "category-forecast-bars", metric: d.navStats.forecasting, barSeries: d.forecastCategoryValues, barLabels: d.forecastCategoryLabels, accent: "#34d399", secondaryAccent: "#22d3ee", narrative: "Projected demand by product line uses the same category values and labels as the visible forecast ranking.", outro: "Category forecast ranked." };
   }
   if (normalized.includes("forecast detail") || normalized.includes("recommendation") || normalized.includes("preview")) {
     const tableRows = normalized.includes("forecast") ? d.forecastRows : normalized.includes("inventory") ? d.inventoryRecommendationRows : normalized.includes("retention") ? d.churnRecommendationRows : d.topProductsRows;
@@ -1477,7 +1588,29 @@ function Panel({
                   <button type="button" aria-label="Close data story" onClick={() => setStoryOpen(false)}><X size={18} /></button>
                 </div>
                 <Suspense fallback={<div className="story-loading">Preparing Remotion story...</div>}>
-                  <DataStoryPlayer title={title} kicker={kicker} metric={storySpec.metric} mode={storySpec.mode} visual={storySpec.visual} storyId={storySpec.storyId} narrative={storySpec.narrative} outro={storySpec.outro} rows={storySpec.rows} accent={storySpec.accent} secondaryAccent={storySpec.secondaryAccent} lineSeries={storySpec.lineSeries} lineMonths={storySpec.lineMonths} barSeries={storySpec.barSeries} donutValues={storySpec.donutValues} donutColors={storySpec.donutColors} gaugeValue={storySpec.gaugeValue} />
+                  <DataStoryPlayer
+                    key={`${storySpec.storyId ?? title}-${storySpec.metric}-${JSON.stringify(storySpec.barSeries ?? storySpec.lineSeries ?? storySpec.donutValues ?? storySpec.rows ?? [])}`}
+                    title={title}
+                    kicker={kicker}
+                    metric={storySpec.metric}
+                    mode={storySpec.mode}
+                    visual={storySpec.visual}
+                    storyId={storySpec.storyId}
+                    narrative={storySpec.narrative}
+                    outro={storySpec.outro}
+                    rows={storySpec.rows}
+                    accent={storySpec.accent}
+                    secondaryAccent={storySpec.secondaryAccent}
+                    lineSeries={storySpec.lineSeries}
+                    lineMonths={storySpec.lineMonths}
+                    barSeries={storySpec.barSeries}
+                    barLabels={storySpec.barLabels}
+                    profitSeries={storySpec.profitSeries}
+                    donutValues={storySpec.donutValues}
+                    donutLabels={storySpec.donutLabels}
+                    donutColors={storySpec.donutColors}
+                    gaugeValue={storySpec.gaugeValue}
+                  />
                 </Suspense>
               </motion.section>
             </motion.div>
@@ -1577,6 +1710,16 @@ function RevenueLine({ compact = false }: { compact?: boolean }) {
   const trendLabel = `${trendDelta >= 0 ? "+" : "-"}${formatAxisCurrency(Math.abs(trendDelta)).replace("$", "")}`;
   const chipX = Math.min(Math.max(finalPoint.x - 98, plotLeft + 12), plotRight - 102);
   const chipY = Math.min(Math.max(finalPoint.y - 52, plotTop + 6), plotBottom - 52);
+  const startBadgeWidth = compact ? 44 : 52;
+  const startBadgeHeight = compact ? 17 : 18;
+  const endBadgeWidth = compact ? 44 : 52;
+  const endBadgeHeight = compact ? 17 : 18;
+  const startBadgeX = Math.min(Math.max(firstPoint.x + (compact ? 11 : 13), plotLeft + 5), plotRight - startBadgeWidth - 4);
+  const startBadgeY = Math.min(Math.max(firstPoint.y + (compact ? -22 : -21), plotTop + 5), plotBottom - startBadgeHeight - 4);
+  const endBadgeX = Math.min(Math.max(finalPoint.x - (compact ? 55 : 61), plotLeft + 5), plotRight - endBadgeWidth - 4);
+  const endBadgeY = Math.min(Math.max(finalPoint.y + (compact ? 12 : 15), plotTop + 5), plotBottom - endBadgeHeight - 4);
+  const peakBadgeX = Math.min(Math.max(peakPoint.x - 38, plotLeft + 6), plotRight - 82);
+  const peakBadgeY = Math.max(peakPoint.y - 30, plotTop + 6);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<HTMLDivElement>(null);
@@ -1667,27 +1810,33 @@ function RevenueLine({ compact = false }: { compact?: boolean }) {
             />
           ))}
         </g>
+        <g className={`revenue-endpoint-marker revenue-start-marker ${compact ? "compact-marker" : ""}`}>
+          <circle cx={firstPoint.x} cy={firstPoint.y} r={compact ? "8.5" : "9.8"} />
+          <circle cx={firstPoint.x} cy={firstPoint.y} r={compact ? "3.4" : "4.1"} />
+          <g className="endpoint-label-pill">
+            <rect x={startBadgeX} y={startBadgeY} width={startBadgeWidth} height={startBadgeHeight} rx={compact ? "8.5" : "9"} />
+            <text x={startBadgeX + startBadgeWidth / 2} y={startBadgeY + (compact ? 11.8 : 12.4)}>Start</text>
+          </g>
+        </g>
+        <g className={`revenue-endpoint-marker revenue-finish-marker ${compact ? "compact-marker" : ""}`}>
+          <circle cx={finalPoint.x} cy={finalPoint.y} r={compact ? "9" : "10.8"} />
+          <circle cx={finalPoint.x} cy={finalPoint.y} r={compact ? "3.6" : "4.4"} />
+          <g className="endpoint-label-pill">
+            <rect x={endBadgeX} y={endBadgeY} width={endBadgeWidth} height={endBadgeHeight} rx={compact ? "8.5" : "9"} />
+            <text x={endBadgeX + endBadgeWidth / 2} y={endBadgeY + (compact ? 11.8 : 12.4)}>End</text>
+          </g>
+        </g>
         {!compact && (
           <>
-            <g className="revenue-endpoint-marker revenue-start-marker" transform={`translate(${firstPoint.x}, ${firstPoint.y})`}>
-              <circle r="9.5" />
-              <circle r="3.8" />
-              <text x="12" y="4">Start</text>
-            </g>
-            <g className="revenue-endpoint-marker revenue-finish-marker" transform={`translate(${finalPoint.x}, ${finalPoint.y})`}>
-              <circle r="10.5" />
-              <circle r="4.2" />
-              <text x="-12" y="24">End</text>
-            </g>
             <line x1={peakPoint.x} x2={peakPoint.x} y1={plotTop + 2} y2={plotBottom} className="revenue-peak-guide" />
-            <g className="revenue-peak-badge" transform={`translate(${Math.min(Math.max(peakPoint.x - 38, plotLeft + 6), plotRight - 82)}, ${Math.max(peakPoint.y - 30, plotTop + 6)})`}>
-              <rect width="76" height="22" rx="11" />
-              <text x="38" y="15">Peak {months[points.indexOf(peakPoint)]}</text>
+            <g className="revenue-peak-badge">
+              <rect x={peakBadgeX} y={peakBadgeY} width="76" height="22" rx="11" />
+              <text x={peakBadgeX + 38} y={peakBadgeY + 15}>Peak {months[points.indexOf(peakPoint)]}</text>
             </g>
-            <g className="revenue-value-chip" transform={`translate(${chipX}, ${chipY})`}>
-              <rect width="96" height="42" rx="15" />
-              <text x="14" y="17" className="chip-label">Latest</text>
-              <text x="14" y="33" className="chip-value">{finalValueLabel} <tspan>{trendLabel}</tspan></text>
+            <g className="revenue-value-chip">
+              <rect x={chipX} y={chipY} width="96" height="42" rx="15" />
+              <text x={chipX + 14} y={chipY + 17} className="chip-label">Latest</text>
+              <text x={chipX + 14} y={chipY + 33} className="chip-value">{finalValueLabel} <tspan>{trendLabel}</tspan></text>
             </g>
           </>
         )}
@@ -1812,10 +1961,11 @@ function Donut({
             const dashOffset = -offset;
             offset += value;
             const isHovered = hoveredSeg === index;
+            const isActive = activeCategory === labels[index];
             return (
               <circle
                 key={`${labels[index]}-${value}`}
-                className={`donut-segment${isHovered ? " donut-segment-hovered" : ""}`}
+                className={`donut-segment${isHovered ? " donut-segment-hovered" : ""}${isActive ? " donut-segment-active" : ""}`}
                 cx="60"
                 cy="60"
                 r="44"
@@ -1825,6 +1975,7 @@ function Donut({
                 strokeDashoffset={dashOffset}
                 strokeWidth={isHovered ? 14 : 12}
                 style={{
+                  "--donut-offset": `${dashOffset}`,
                   transformBox: "fill-box",
                   transformOrigin: "center",
                   transform: isHovered ? "scale(1.07)" : "scale(1)",
@@ -2349,7 +2500,11 @@ function OverviewPage() {
             <RevenueBars />
           ) : (
             <Suspense fallback={<RevenueBars />}>
-              <VolumeBars3D />
+              <VolumeBars3D
+                values={dashboardDataState.bars}
+                labels={dashboardDataState.barMonths}
+                title="Monthly revenue volume"
+              />
             </Suspense>
           )}
         </Panel>
@@ -2768,7 +2923,7 @@ function SettingsPage({ theme, setTheme }: { theme: ThemeMode; setTheme: (theme:
         <div className="theme-toggle-row">
           <div>
             <strong>{isLight ? "Light theme" : "Dark theme"}</strong>
-            <span>{isLight ? "Metallic silver and gold" : "Obsidian black and crimson"}</span>
+            <span>{isLight ? "Warm gold on porcelain" : "Neon violet on deep indigo"}</span>
           </div>
           <button
             type="button"
@@ -2783,7 +2938,7 @@ function SettingsPage({ theme, setTheme }: { theme: ThemeMode; setTheme: (theme:
             <span className="toggle-thumb" />
           </button>
         </div>
-        <p className="settings-copy">Use the switch to move between the black-and-red reference theme and the metallic silver-and-gold workspace.</p>
+        <p className="settings-copy">Use the switch to move between the deep-indigo neon workspace and the light porcelain-and-gold workspace.</p>
       </AccordionPanel>
       <AccordionPanel title="Model Settings" kicker="Configuration" icon={Brain}>
         <Control title="KMeans clusters" value="5 clusters" />
@@ -2961,6 +3116,7 @@ function Dashboard() {
   useEffect(() => {
     const workspaceBody = root.current?.querySelector<HTMLElement>(".workspace-body");
     workspaceBody?.scrollTo({ top: 0, behavior: "auto" });
+    window.scrollTo({ top: 0, behavior: "auto" });
   }, [activePage]);
 
   useEffect(() => {
@@ -3085,6 +3241,14 @@ function Dashboard() {
                 exit={{ opacity: 0, transition: { duration: 0.2 } }}
               >
                 <SkeletonDashboard />
+              </motion.div>
+            ) : liveDashboardData.error ? (
+              <motion.div
+                key="data-error"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.24, ease: PAGE_EASE } }}
+              >
+                <DataLoadError message={liveDashboardData.error} />
               </motion.div>
             ) : (
               <motion.div

@@ -387,12 +387,17 @@ function buildDashboardData(
 
   const upcomingForecast = sortedForecast.slice(0, 30);
   const projectedDemand = sum(upcomingForecast.map((row) => row.yhat));
-  const avgForecastBand = average(
-    upcomingForecast.map((row) => {
-      const denominator = Math.max(row.yhat, 1);
-      return ((row.yhat_upper - row.yhat_lower) / denominator) * 100;
-    })
+  // Relative interval width, computed as an aggregate ratio so that individual
+  // rows with near-zero or negative predicted demand cannot blow the metric up
+  // (a per-row (upper-lower)/yhat average is unstable when yhat approaches 0).
+  const avgForecastWidth = average(
+    upcomingForecast.map((row) => Math.max(row.yhat_upper - row.yhat_lower, 0))
   );
+  const avgForecastLevel = Math.max(
+    average(upcomingForecast.map((row) => Math.abs(row.yhat))),
+    1
+  );
+  const avgForecastBand = (avgForecastWidth / avgForecastLevel) * 100;
   const inferredAccuracy = Math.max(78, Math.round(100 - avgForecastBand));
 
   const highRiskRows = [...highRisk]
@@ -843,8 +848,8 @@ export function useRetailPulseData(): DashboardData {
         const inventoryRecs = csvToObjects(inventoryRecCsv, (row) => ({
           StockCode: row.StockCode,
           Description: row.Description,
-          Total_Quantity_Sold: 0,
-          Total_Revenue: 0,
+          Total_Quantity_Sold: parseNumber(row.Total_Quantity_Sold),
+          Total_Revenue: parseNumber(row.Total_Revenue),
           Average_Daily_Demand: parseNumber(row.Average_Daily_Demand),
           Reorder_Point: parseNumber(row.Reorder_Point),
           Inventory_Gap: parseNumber(row.Inventory_Gap),
@@ -856,7 +861,16 @@ export function useRetailPulseData(): DashboardData {
 
         const inventoryBaseMap = new Map(inventoryBase.map((row) => [row.StockCode, row]));
         const inventoryRows = inventoryRecs.length
-          ? inventoryRecs.map((row) => ({ ...(inventoryBaseMap.get(row.StockCode) ?? row), ...row }))
+          ? inventoryRecs.map((row) => {
+            const base = inventoryBaseMap.get(row.StockCode);
+            return {
+              ...(base ?? row),
+              ...row,
+              Total_Quantity_Sold: row.Total_Quantity_Sold || base?.Total_Quantity_Sold || 0,
+              Total_Revenue: row.Total_Revenue || base?.Total_Revenue || 0,
+              Net_Quantity: row.Net_Quantity || base?.Net_Quantity || 0,
+            };
+          })
           : inventoryBase;
 
         const forecastRows = csvToObjects(forecastCsv, (row) => ({
