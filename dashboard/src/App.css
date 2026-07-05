@@ -4177,14 +4177,26 @@ kbd {
   .trend-value { font-size: clamp(1rem, 5.6vw, 1.45rem); }
 
   /* exec pulse section */
-  .exec-pulse { padding: 16px 14px; border-radius: 28px; }
+  .exec-pulse {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 100%;
+    overflow: hidden;
+    padding: 16px 14px;
+    border-radius: 28px;
+  }
   .exec-pulse-head { flex-direction: column; gap: 12px; align-items: flex-start; }
   .exec-pulse-controls { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .exec-filter { font-size: .78rem; }
-  .exec-pulse-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  .exec-pulse-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .exec-card { min-height: 150px; padding: 14px; border-radius: 22px; }
   .exec-card-value { font-size: clamp(1.5rem, 8vw, 2.2rem); }
-  .exec-pulse-chart { border-radius: 22px; padding: 14px; }
+  .exec-pulse-chart {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: 22px;
+    padding: 14px;
+  }
 
   /* panels */
   .panel { padding: 14px; border-radius: 22px; }
@@ -4208,20 +4220,23 @@ kbd {
   .revenue-line-wrapper {
     width: 100%;
     overflow-x: auto;
-    overflow-y: visible;
+    overflow-y: hidden;
     padding-bottom: 8px;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
   }
   .revenue-line {
-    width: 640px;
-    max-width: none;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     height: 280px;
     padding: 14px;
     border-radius: 20px;
   }
   .revenue-line.compact {
-    width: 560px;
+    width: 100%;
+    max-width: 100%;
     height: 250px;
   }
   .axis-label { font-size: 11px; }
@@ -4977,6 +4992,48 @@ kbd {
 .panel {
   position: relative;
 }
+
+@supports (content-visibility: auto) {
+  .workspace-body > div,
+  .hero-panel,
+  .filter-dock,
+  .kpi-grid,
+  .exec-pulse,
+  .panel,
+  .report-builder,
+  .media-studio,
+  .settings-grid {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 620px;
+  }
+
+  .metric-card {
+    contain-intrinsic-size: auto 180px;
+  }
+}
+
+.hero-panel,
+.metric-card,
+.panel,
+.exec-pulse,
+.story-surface,
+.media-remotion-frame,
+.volume-bars-3d,
+.revenue-line-wrapper,
+.combo-bars,
+.donut-layout,
+.gauge,
+.lux-table {
+  contain: layout paint;
+}
+
+.topbar,
+.story-overlay,
+.drawer,
+.command-modal {
+  contain: layout paint style;
+}
+
 .panel::before {
   content: "";
   position: absolute;
@@ -5742,7 +5799,6 @@ kbd {
   transform: rotateX(6deg) rotateY(-18deg) translateZ(0);
   animation: volume-float 7.2s ease-in-out infinite;
   animation-delay: var(--bar-delay);
-  will-change: transform;
 }
 
 .volume-bars-3d.is-static .volume-bar-column {
@@ -6166,6 +6222,10 @@ kbd {
   .content,
   .dashboard-main,
   .module-view,
+  .exec-pulse,
+  .exec-pulse-head,
+  .exec-pulse-controls,
+  .exec-pulse-chart,
   .panel,
   .dashboard-grid,
   .overview-layout,
@@ -6173,6 +6233,7 @@ kbd {
   .settings-grid,
   .risk-matrix,
   .media-studio,
+  .exec-pulse-grid,
   .donut-layout,
   .combo-bars,
   .revenue-line-wrapper {
@@ -6192,8 +6253,8 @@ kbd {
   }
 
   .revenue-line-wrapper {
-    overflow-x: auto;
-    overflow-y: visible;
+    overflow-x: hidden;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
   }
 
