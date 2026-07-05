@@ -2,40 +2,67 @@
 
 ![RetailPulse dashboard preview](docs/assets/retailpulse-dashboard-preview.png)
 
+<p align="center">
+  <a href="https://dashboard-rho-pied-52.vercel.app"><img alt="Live Dashboard" src="https://img.shields.io/badge/Live%20Dashboard-Vercel-0f172a?style=for-the-badge&logo=vercel"></a>
+  <a href="https://github.com/codeplayboy/RetailPulse-Zidio"><img alt="GitHub Repository" src="https://img.shields.io/badge/GitHub-RetailPulse--Zidio-181717?style=for-the-badge&logo=github"></a>
+  <img alt="React TypeScript" src="https://img.shields.io/badge/React%20%2B%20TypeScript-Dashboard-61dafb?style=for-the-badge&logo=react&logoColor=111827">
+  <img alt="Python ML" src="https://img.shields.io/badge/Python-ML%20Pipelines-3776ab?style=for-the-badge&logo=python&logoColor=white">
+</p>
+
 ## AI-Powered Customer Analytics and Demand Forecasting Platform
 
-RetailPulse-Zidio is a production-style retail intelligence platform built for the Zidio internship project. It combines data engineering, customer intelligence, demand forecasting, inventory optimization, and an interactive premium dashboard into one integrated workflow.
+RetailPulse-Zidio is a production-style retail intelligence platform built for the Zidio internship project. It connects data engineering, customer intelligence, demand forecasting, inventory optimization, and a premium interactive dashboard into one integrated decision-support system.
 
-The platform converts raw retail transaction and inventory data into cleaned datasets, engineered features, machine learning outputs, executive KPIs, animated charts, and decision-ready business insights.
+The platform converts retail transaction and inventory data into cleaned datasets, engineered features, machine learning outputs, executive KPIs, animated charts, Remotion data stories, and decision-ready business insights.
 
-- [Live Dashboard](https://dashboard-rho-pied-52.vercel.app)
-- [GitHub Repository](https://github.com/codeplayboy/RetailPulse-Zidio)
+**Final integrated branch:** `main`  
+**Platform integration and dashboard lead:** Rashad Roushan  
+**Production dashboard:** [https://dashboard-rho-pied-52.vercel.app](https://dashboard-rho-pied-52.vercel.app)
 
 ## Project Highlights
 
-- Live React + TypeScript dashboard for executive analytics
-- Integrated outputs from data cleaning, feature engineering, churn prediction, demand forecasting, and inventory optimization
-- Responsive premium UI with mobile and desktop layouts
-- Real CSV-driven analytics instead of static mock dashboards
-- Remotion-powered data story previews for dashboard panels
-- GSAP and Framer Motion interactions for polished transitions
-- Data contract validation script for checking required integration outputs
-- Vercel production deployment
+- Live React + TypeScript dashboard for executive retail analytics
+- Real CSV-driven analytics from team module outputs, not static mock screens
+- Integrated data cleaning, feature engineering, segmentation, churn, forecasting, and inventory outputs
+- Responsive premium interface for desktop and mobile review
+- Remotion-powered Play Data stories connected to dashboard data
+- GSAP, Framer Motion, and lightweight 3D-style chart interactions
+- Data contract validation script for dashboard integration safety
+- Production deployment on Vercel
+- Documentation, evidence screenshots, and integration reports included
 
 ## Team Members
 
-| Member | Responsibility | GitHub / Project Link |
+| Member | Main Responsibility | GitHub / Project Link |
 | --- | --- | --- |
-| Rashad Roushan | Platform Integration, Dashboard, Deployment | [codeplayboy](https://github.com/codeplayboy) |
+| **Rashad Roushan** | **Platform Integration, Dashboard, Deployment, GitHub Management** | [codeplayboy](https://github.com/codeplayboy) |
 | Kaviya S | Data Engineering and Dataset Preparation | [feature/kaviya-data-engineering](https://github.com/codeplayboy/RetailPulse-Zidio/tree/feature/kaviya-data-engineering) |
 | Rohinee Solunke | Data Cleaning, Feature Engineering, EDA | [feature/rohinee-data-pipeline](https://github.com/codeplayboy/RetailPulse-Zidio/tree/feature/rohinee-data-pipeline) |
-| Sachin Yadav | Forecasting, Churn, Inventory ML Outputs | [feature/sachin-forecasting](https://github.com/codeplayboy/RetailPulse-Zidio/tree/feature/sachin-forecasting) |
+| Sachin Yadav | Demand Forecasting, Churn, Inventory ML Outputs | [feature/sachin-forecasting](https://github.com/codeplayboy/RetailPulse-Zidio/tree/feature/sachin-forecasting) |
 
-Note: Rashad's public GitHub profile is verified from the repository owner link. Teammate project branch links are included so their committed work can be reviewed directly. Their public profile links can be added once the exact GitHub usernames are shared.
+Note: Rashad's public GitHub profile is verified from the repository owner link. Teammate project branch links are included so their committed work can be reviewed directly. Public teammate profile links can be added when exact usernames are shared.
 
 ## Acknowledgement
 
 We sincerely thank Zidio for providing this internship opportunity and giving us the chance to work on a practical, end-to-end AI and analytics project. This project helped us collaborate as a team, practice Git workflows, build machine learning pipelines, integrate real outputs into a dashboard, and prepare a complete deployable product.
+
+## Dashboard Preview
+
+| Executive Overview | Customer Segmentation |
+| --- | --- |
+| ![Executive Overview](docs/dashboard_evidence/desktop_01_overview.png) | ![Customer Segmentation](docs/dashboard_evidence/desktop_02_segmentation.png) |
+
+| Churn Prediction | Demand Forecasting |
+| --- | --- |
+| ![Churn Prediction](docs/dashboard_evidence/desktop_03_churn.png) | ![Demand Forecasting](docs/dashboard_evidence/desktop_05_forecasting.png) |
+
+| Inventory Optimization | Analytics and Reports |
+| --- | --- |
+| ![Inventory Optimization](docs/dashboard_evidence/desktop_07_inventory.png) | ![Analytics and Reports](docs/dashboard_evidence/desktop_08_reports.png) |
+
+| Media Studio | Mobile Layout |
+| --- | --- |
+| ![Media Studio](docs/dashboard_evidence/desktop_09_media.png) | ![Mobile Layout](docs/dashboard_evidence/mobile_01_overview.png) |
 
 ## Problem Statement
 
@@ -45,7 +72,7 @@ Retail businesses often struggle with three connected problems:
 - Forecasting demand accurately enough to support planning decisions
 - Maintaining healthy inventory levels without overstocking or stockouts
 
-RetailPulse-Zidio solves these problems by connecting data pipelines, model outputs, and a visual dashboard into one decision-support system.
+RetailPulse-Zidio solves these problems by connecting data pipelines, model outputs, and a visual dashboard into one decision-support platform.
 
 ## Integrated Modules
 
@@ -55,7 +82,7 @@ Owned by Kaviya and supported by Rohinee's processing pipeline.
 
 This module prepares retail data for downstream analytics and machine learning.
 
-Key outputs include:
+Key outputs:
 
 - `data/processed/cleaned_data.csv`
 - `data/processed/features_data_sample.csv`
@@ -73,9 +100,9 @@ Dashboard coverage:
 - Customer segmentation overview
 - Segment distribution
 - Customer lifetime value ranking
-- Churn prediction page
-- Churn risk distribution
-- Retention recommendation panels
+- RFM analysis
+- Cluster views
+- Retention playbooks
 
 ### 3. Demand Forecasting
 
@@ -95,14 +122,31 @@ Forecasting limitation:
 
 The demand dataset contains low-demand and zero-demand periods. Since MAPE is percentage-based, zero or near-zero actual demand values increase the error percentage significantly. This limitation is documented as part of the model evaluation context.
 
-Key outputs include:
+Key outputs:
 
 - `outputs/demand_forecast.csv`
 - `data/outputs/forecast_metrics.csv`
 - `src/forecasting.py`
 - `src/prophet_forecasting.py`
 
-### 4. Inventory Optimization
+### 4. Churn Prediction
+
+The churn module provides customer risk scores, high-risk customer outputs, and retention-focused dashboard views.
+
+Dashboard coverage:
+
+- Churn risk KPIs
+- Risk distribution
+- High-risk customer table
+- Retention recommendations
+- Churn Play Data story
+
+Key outputs:
+
+- `outputs/churn_predictions.csv`
+- `outputs/high_risk_customers.csv`
+
+### 5. Inventory Optimization
 
 The inventory module calculates stock health and operational recommendations using demand, SKU, and inventory signals.
 
@@ -119,11 +163,11 @@ Key output:
 
 - `outputs/inventory_recommendations.csv`
 
-### 5. Platform Integration Dashboard
+### 6. Platform Integration Dashboard
 
 Owned by Rashad Roushan.
 
-The dashboard is the integration layer of the project. It reads processed datasets and model outputs, transforms them into UI-ready metrics, and presents the complete project as an interactive intelligence operating system.
+The dashboard is the integration layer of the project. It reads processed datasets and model outputs, transforms them into UI-ready metrics, and presents the complete project as an interactive retail intelligence operating system.
 
 Dashboard sections:
 
@@ -136,6 +180,14 @@ Dashboard sections:
 - Media Studio
 - Settings
 
+Key dashboard files:
+
+- `dashboard/src/App.tsx` - main dashboard shell, navigation, sections, modals, and user flows
+- `dashboard/src/data/retailpulse-data.ts` - CSV/JSON loader, integration adapter, KPI derivation, and chart data preparation
+- `dashboard/src/chart-animations.tsx` - Remotion Play Data stories and cinematic module previews
+- `dashboard/src/App.css` - premium visual system, responsive layout, glassmorphism, chart motion, and mobile polish
+- `dashboard/public/data/` - browser-safe data copies used by the live dashboard
+
 ## Dashboard Tech Stack
 
 | Area | Technology |
@@ -146,7 +198,7 @@ Dashboard sections:
 | Animation | GSAP, Framer Motion |
 | Video/Data Stories | Remotion Player |
 | Icons | Lucide React |
-| 3D / Visual Effects | Lightweight 3D-style chart components |
+| Visual Effects | Lightweight 3D-style chart components |
 | Deployment | Vercel |
 
 ## Backend and ML Tech Stack
@@ -163,30 +215,32 @@ Dashboard sections:
 
 ```text
 RetailPulse-Zidio/
-├── dashboard/                 # React + TypeScript dashboard
-│   ├── public/                # Public dashboard assets and data
-│   ├── src/                   # App, components, animations, data bindings
-│   ├── dist/                  # Production build output
-│   └── package.json
-├── data/
-│   ├── raw/                   # Raw input data
-│   ├── processed/             # Cleaned and feature-engineered data
-│   └── outputs/               # Shared metric outputs
-├── docs/                      # Reports, documentation, screenshots
-│   └── assets/                # README and documentation assets
-├── models/                    # Model artifacts
-├── notebooks/                 # EDA, forecasting, ML, and experimental notebooks
-├── outputs/                   # Final generated model outputs
-├── src/                       # Reusable Python production modules
-├── tests/                     # Validation and test scripts
-├── tools/                     # Integration validation utilities
-├── README.md
-└── requirements.txt
+|-- dashboard/                 # React + TypeScript dashboard
+|   |-- public/                # Public dashboard assets and data
+|   |-- src/                   # App, components, animations, data bindings
+|   |-- dist/                  # Production build output
+|   |-- package.json
+|   `-- vercel.json
+|-- data/
+|   |-- raw/                   # Raw input data
+|   |-- processed/             # Cleaned and feature-engineered data
+|   `-- outputs/               # Shared metric outputs
+|-- docs/                      # Reports, documentation, screenshots
+|   |-- assets/                # README and documentation assets
+|   `-- dashboard_evidence/    # Proof screenshots and validation results
+|-- models/                    # Model artifacts
+|-- notebooks/                 # EDA, forecasting, ML, and experimental notebooks
+|-- outputs/                   # Final generated model outputs
+|-- src/                       # Reusable Python production modules
+|-- tests/                     # Validation and test scripts
+|-- tools/                     # Integration validation utilities
+|-- README.md
+`-- requirements.txt
 ```
 
 ## Data and Output Contracts
 
-The dashboard expects these core files to exist:
+The dashboard expects these core files:
 
 ```text
 data/processed/cleaned_data.csv
@@ -282,13 +336,6 @@ Then open:
 http://127.0.0.1:4173/
 ```
 
-### 6. Build for Production
-
-```bash
-cd dashboard
-npm run build
-```
-
 ## Testing and Verification
 
 Recommended checks before final submission:
@@ -299,13 +346,25 @@ cd dashboard
 npm run build
 ```
 
-What these checks verify:
+Latest verified dashboard data contract:
 
-- Required CSV files exist
-- Required columns are present
-- Dashboard TypeScript compiles successfully
-- Vite production build completes
-- Integrated dashboard can be deployed to Vercel
+```text
+PASS | Revenue source | rows=739
+PASS | Demand source | rows=739
+PASS | SKU inventory source | rows=4917
+PASS | Forecast output | rows=147
+PASS | Churn output | rows=5000
+PASS | Inventory recommendations | rows=4917
+PASS | Feature sample | rows=10000
+```
+
+Evidence files:
+
+- `docs/dashboard_evidence/dashboard_data_contract_results.json`
+- `docs/dashboard_evidence/proof_dashboard_data_contract.png`
+- `docs/dashboard_evidence/proof_npm_build.png`
+- `docs/RetailPulse_Complete_Dashboard_Integration_Book_Rashad_Roushan.docx`
+- `docs/RetailPulse_Dashboard_Integration_Testing_Report_Rashad.docx`
 
 ## Deployment
 
@@ -328,13 +387,18 @@ The project used a branch-based workflow:
 
 ```text
 main
-├── feature/kaviya-data-engineering
-├── feature/rohinee-data-pipeline
-├── feature/sachin-forecasting
-└── feature/rashad-platform-engineering
+|-- feature/kaviya-data-engineering
+|-- feature/rohinee-data-pipeline
+|-- feature/sachin-forecasting
+`-- feature/rashad-platform-engineering
 ```
 
-Each teammate worked on their own branch. Completed outputs were reviewed and merged into `main`, then the dashboard integration layer was updated and deployed.
+Current repo state:
+
+- `main` is the final integrated branch.
+- `origin/HEAD` points to `origin/main`.
+- Recent integration commits on `main` were authored by Rashad Roushan.
+- Teammate branches remain available for reviewing individual module work.
 
 ## Known Limitations
 
@@ -362,5 +426,6 @@ RetailPulse-Zidio currently includes:
 - Mobile and desktop responsive layouts
 - Data contract verification
 - Production Vercel deployment
+- Final documentation and dashboard evidence
 
 This repository represents the final integrated project build prepared for presentation and review.
