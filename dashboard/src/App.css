@@ -260,11 +260,6 @@ button:disabled { cursor: not-allowed; opacity: .52; }
 .panel {
   backdrop-filter: blur(8px) saturate(1.5);
   -webkit-backdrop-filter: blur(8px) saturate(1.5);
-  /* Skip painting (and re-blurring) panels while they are off-screen so fast
-     scrolling only pays for what is actually visible. `auto` remembers each
-     panel's real height after first render, so the scrollbar stays stable. */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 480px;
 }
 
 .theme-light .sidebar,
@@ -4994,12 +4989,6 @@ kbd {
 }
 
 @supports (content-visibility: auto) {
-  .workspace-body > div,
-  .hero-panel,
-  .filter-dock,
-  .kpi-grid,
-  .exec-pulse,
-  .panel,
   .report-builder,
   .media-studio,
   .settings-grid {
@@ -5401,12 +5390,19 @@ kbd {
 .chart-bloom .heat-grid,
 .chart-bloom .scatter,
 .chart-bloom .gauge,
-.chart-bloom .lux-table,
-.chart-bloom .activity-feed,
 .chart-bloom .volume-bars-3d {
-  opacity: 0;
-  transform: translate3d(0, 10px, 0);
+  opacity: 1;
+  transform: none;
   will-change: opacity, transform;
+}
+
+.chart-bloom .revenue-line-wrapper,
+.chart-bloom .combo-bars,
+.chart-bloom .donut-layout,
+.chart-bloom .gauge,
+.chart-bloom .volume-bars-3d {
+  position: relative;
+  overflow: hidden;
 }
 
 .chart-bloom.is-bloomed .revenue-line-wrapper,
@@ -5417,14 +5413,9 @@ kbd {
 .chart-bloom.is-bloomed .heat-grid,
 .chart-bloom.is-bloomed .scatter,
 .chart-bloom.is-bloomed .gauge,
-.chart-bloom.is-bloomed .lux-table,
-.chart-bloom.is-bloomed .activity-feed,
 .chart-bloom.is-bloomed .volume-bars-3d {
   opacity: 1;
-  transform: translate3d(0, 0, 0);
-  transition:
-    opacity 0.58s cubic-bezier(0.22, 1, 0.36, 1) var(--bloom-delay, 0s),
-    transform 0.68s cubic-bezier(0.22, 1, 0.36, 1) var(--bloom-delay, 0s);
+  transform: none;
 }
 
 .chart-bloom .draw-line,
@@ -5432,12 +5423,14 @@ kbd {
 .chart-bloom .target-line {
   stroke-dasharray: 900;
   stroke-dashoffset: 900;
+  opacity: .18;
+  filter: drop-shadow(0 0 0 rgba(34,211,238,0));
 }
 
 .chart-bloom.is-bloomed .draw-line,
 .chart-bloom.is-bloomed .compare-line,
 .chart-bloom.is-bloomed .target-line {
-  animation: bloom-line-draw 1.35s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+  animation: bloom-line-draw 1.9s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .chart-bloom .line-dot,
@@ -5448,34 +5441,31 @@ kbd {
 }
 
 .chart-bloom .line-dot {
-  opacity: 0;
-  transform: scale(0.45);
+  opacity: .18;
+  transform: scale(.46);
 }
 
 .chart-bloom.is-bloomed .line-dot {
-  animation: bloom-dot-pop 0.62s cubic-bezier(0.2, 1.35, 0.3, 1) both;
+  animation: bloom-dot-glow .9s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .chart-bloom .bar-cluster i,
 .chart-bloom .bar-cluster b,
 .chart-bloom .stacked-bars span,
 .chart-bloom .hbars strong,
-.chart-bloom .heat-grid span,
-.chart-bloom .lux-table > div,
-.chart-bloom .activity-feed article {
+.chart-bloom .heat-grid span {
   transform-origin: bottom;
-  transform: scaleY(0.18) translate3d(0, 8px, 0);
-  opacity: 0;
+  transform: scaleY(.08) translate3d(0, 7px, 0);
+  opacity: .26;
+  filter: saturate(.75) brightness(.82);
 }
 
 .chart-bloom.is-bloomed .bar-cluster i,
 .chart-bloom.is-bloomed .bar-cluster b,
 .chart-bloom.is-bloomed .stacked-bars span,
 .chart-bloom.is-bloomed .hbars strong,
-.chart-bloom.is-bloomed .heat-grid span,
-.chart-bloom.is-bloomed .lux-table > div,
-.chart-bloom.is-bloomed .activity-feed article {
-  animation: bloom-rise 0.54s cubic-bezier(0.22, 1, 0.36, 1) both;
+.chart-bloom.is-bloomed .heat-grid span {
+  animation: bloom-rise 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .chart-bloom.is-bloomed .bar-cluster:nth-child(1) i,
@@ -5505,40 +5495,47 @@ kbd {
 
 .chart-bloom.is-bloomed .donut,
 .chart-bloom.is-bloomed .gauge svg {
-  animation: bloom-orbit 0.92s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: bloom-orbit 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.chart-bloom.is-bloomed::after {
+.chart-bloom.is-bloomed .revenue-line-wrapper::after,
+.chart-bloom.is-bloomed .combo-bars::after,
+.chart-bloom.is-bloomed .donut-layout::after,
+.chart-bloom.is-bloomed .gauge::after,
+.chart-bloom.is-bloomed .volume-bars-3d::after {
   content: "";
   position: absolute;
   inset: 1px;
   border-radius: inherit;
   pointer-events: none;
-  background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,.18) 44%, transparent 66%);
+  background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,.14) 44%, transparent 66%);
   opacity: 0;
   transform: translateX(-55%);
-  animation: bloom-sheen 1.08s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+  animation: bloom-sheen 1.25s cubic-bezier(0.2, 0.9, 0.2, 1) both;
 }
 
 @keyframes bloom-rise {
-  0% { opacity: 0; transform: scaleY(0.72) translate3d(0, 6px, 0); }
-  100% { opacity: 1; transform: scaleY(1) translate3d(0, 0, 0); }
+  0% { opacity: .26; transform: scaleY(.08) translate3d(0, 7px, 0); filter: saturate(.75) brightness(.82); }
+  58% { opacity: 1; transform: scaleY(1.04) translate3d(0, -1px, 0); filter: saturate(1.2) brightness(1.1); }
+  100% { opacity: 1; transform: scaleY(1) translate3d(0, 0, 0); filter: saturate(1) brightness(1); }
 }
 
 @keyframes bloom-line-draw {
-  from { stroke-dashoffset: 900; opacity: 0.28; }
-  to { stroke-dashoffset: 0; opacity: 1; }
+  0% { stroke-dashoffset: 900; opacity: .18; filter: drop-shadow(0 0 0 rgba(34,211,238,0)); }
+  64% { opacity: 1; filter: drop-shadow(0 0 14px rgba(34,211,238,.42)); }
+  100% { stroke-dashoffset: 0; opacity: 1; filter: drop-shadow(0 0 4px rgba(34,211,238,.18)); }
 }
 
-@keyframes bloom-dot-pop {
-  0% { opacity: 0; transform: scale(0.72); }
-  70% { opacity: 1; transform: scale(1.06); }
+@keyframes bloom-dot-glow {
+  0% { opacity: .18; transform: scale(.46); filter: drop-shadow(0 0 0 rgba(34,211,238,0)); }
+  58% { opacity: 1; transform: scale(1.16); filter: drop-shadow(0 0 18px rgba(34,211,238,.54)); }
   100% { opacity: 1; transform: scale(1); }
 }
 
 @keyframes bloom-orbit {
-  0% { opacity: 0; transform: translate3d(0, 8px, 0); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0); }
+  0% { opacity: .8; transform: scale(.965) rotate(-1.5deg); filter: saturate(.86) brightness(.94); }
+  62% { opacity: 1; transform: scale(1.012) rotate(.35deg); filter: saturate(1.18) brightness(1.08); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); filter: saturate(1) brightness(1); }
 }
 
 @keyframes bloom-sheen {
@@ -5607,9 +5604,7 @@ kbd {
 .perf-minimal .chart-bloom.is-bloomed .hbars,
 .perf-minimal .chart-bloom.is-bloomed .heat-grid,
 .perf-minimal .chart-bloom.is-bloomed .scatter,
-.perf-minimal .chart-bloom.is-bloomed .gauge,
-.perf-minimal .chart-bloom.is-bloomed .lux-table,
-.perf-minimal .chart-bloom.is-bloomed .activity-feed {
+.perf-minimal .chart-bloom.is-bloomed .gauge {
   transition:
     opacity .42s cubic-bezier(0.22, 1, 0.36, 1) var(--bloom-delay, 0s),
     transform .5s cubic-bezier(0.22, 1, 0.36, 1) var(--bloom-delay, 0s);
@@ -5622,16 +5617,14 @@ kbd {
 }
 
 .perf-minimal .chart-bloom.is-bloomed .line-dot {
-  animation: bloom-dot-pop .42s cubic-bezier(0.2, 1, 0.3, 1) both;
+  animation: bloom-dot-glow .42s cubic-bezier(0.2, 1, 0.3, 1) both;
 }
 
 .perf-minimal .chart-bloom.is-bloomed .bar-cluster i,
 .perf-minimal .chart-bloom.is-bloomed .bar-cluster b,
 .perf-minimal .chart-bloom.is-bloomed .stacked-bars span,
 .perf-minimal .chart-bloom.is-bloomed .hbars strong,
-.perf-minimal .chart-bloom.is-bloomed .heat-grid span,
-.perf-minimal .chart-bloom.is-bloomed .lux-table > div,
-.perf-minimal .chart-bloom.is-bloomed .activity-feed article {
+.perf-minimal .chart-bloom.is-bloomed .heat-grid span {
   animation: bloom-soft-rise .38s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -5658,16 +5651,9 @@ kbd {
   opacity: 1;
 }
 
-.scrolling-up .chart-bloom,
-.scrolling-up .chart-bloom *,
-.scrolling-up .chart-bloom::before,
-.scrolling-up .chart-bloom::after {
-  animation-play-state: paused !important;
-}
-
 @keyframes bloom-soft-rise {
-  0% { opacity: 0; transform: translate3d(0, 8px, 0); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0); }
+  0% { opacity: .84; transform: scaleY(.86) translate3d(0, 2px, 0); }
+  100% { opacity: 1; transform: scaleY(1) translate3d(0, 0, 0); }
 }
 
 .perf-minimal .metric-card,
@@ -5761,8 +5747,13 @@ kbd {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: end;
   gap: clamp(6px, 1vw, 12px);
-  perspective: 980px;
-  padding: 28px 6px 28px;
+  perspective: none;
+  padding: 34px 8px 30px;
+  border-bottom: 1px solid rgba(255,255,255,.16);
+  background:
+    linear-gradient(180deg, transparent 0 24%, rgba(255,255,255,.055) 24.5% 25%, transparent 25.5% 49%, rgba(255,255,255,.045) 49.5% 50%, transparent 50.5% 74%, rgba(255,255,255,.035) 74.5% 75%, transparent 75.5%),
+    linear-gradient(90deg, rgba(255,255,255,.055), transparent 1px);
+  background-size: 100% 100%, calc(100% / 12) 100%;
 }
 
 .volume-bar-shell {
@@ -5793,11 +5784,12 @@ kbd {
 
 .volume-bar-column {
   position: relative;
-  width: clamp(14px, 1.7vw, 24px);
+  width: clamp(16px, 1.8vw, 26px);
   height: var(--bar-height);
-  transform-style: preserve-3d;
-  transform: rotateX(6deg) rotateY(-18deg) translateZ(0);
-  animation: volume-float 7.2s ease-in-out infinite;
+  transform-origin: bottom center;
+  transform-style: flat;
+  transform: translateZ(0);
+  animation: volume-glow 5.8s ease-in-out infinite;
   animation-delay: var(--bar-delay);
 }
 
@@ -5829,40 +5821,32 @@ kbd {
 .volume-bar-face {
   position: absolute;
   display: block;
-  border-radius: 5px 5px 2px 2px;
+  border-radius: 8px 8px 4px 4px;
 }
 
 .volume-bar-front {
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.5) 0%, color-mix(in srgb, white 34%, var(--bar-color)) 10%, var(--bar-color) 48%, color-mix(in srgb, black 22%, var(--bar-color)) 100%);
+    linear-gradient(90deg, rgba(255,255,255,.24), transparent 18% 78%, rgba(0,0,0,.16)),
+    linear-gradient(180deg, color-mix(in srgb, white 52%, var(--bar-color)) 0%, var(--bar-color) 42%, color-mix(in srgb, black 24%, var(--bar-color)) 100%);
   box-shadow:
-    0 0 16px color-mix(in srgb, var(--bar-color) 26%, transparent),
+    0 0 18px color-mix(in srgb, var(--bar-color) 24%, transparent),
     inset 0 1px 0 rgba(255,255,255,0.34),
-    inset 0 -10px 24px rgba(0,0,0,.18);
+    inset 0 -12px 24px rgba(0,0,0,.2);
 }
 
 .volume-bar-side {
-  top: 2px;
-  right: -8px;
-  width: 8px;
-  height: calc(100% - 2px);
-  border-radius: 0 5px 2px 0;
-  background: linear-gradient(180deg, color-mix(in srgb, white 14%, var(--bar-color)) 0%, color-mix(in srgb, black 32%, var(--bar-color)) 100%);
-  transform: skewY(38deg);
-  transform-origin: left top;
-  opacity: 0.82;
+  display: none;
 }
 
 .volume-bar-top {
-  top: -8px;
-  left: 1px;
+  top: -3px;
+  left: 0;
   width: 100%;
-  height: 8px;
-  border-radius: 5px 5px 0 0;
-  background: linear-gradient(90deg, color-mix(in srgb, white 55%, var(--bar-color)) 0%, color-mix(in srgb, white 15%, var(--bar-color)) 100%);
-  transform: skewX(52deg);
-  transform-origin: left bottom;
+  height: 6px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, white 60%, var(--bar-color)) 0%, var(--bar-color) 62%, transparent 72%);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--bar-color) 42%, transparent);
 }
 
 .volume-bars-floor {
@@ -5894,6 +5878,11 @@ kbd {
   50% { transform: rotateX(6deg) rotateY(-18deg) translate3d(0, -2px, 0); }
 }
 
+@keyframes volume-glow {
+  0%, 100% { filter: saturate(1) brightness(1); }
+  50% { filter: saturate(1.18) brightness(1.08); }
+}
+
 .theme-light .volume-bars-3d.faux-3d {
   background:
     linear-gradient(rgba(90,76,56,0.08) 1px, transparent 1px),
@@ -5910,34 +5899,31 @@ kbd {
 }
 .theme-light .volume-bar-label { color: rgba(46,40,58,.58); }
 
-.perf-minimal .volume-bar-column,
-.perf-balanced .volume-bar-column {
+.perf-minimal .volume-bar-column {
   animation: none;
   will-change: auto;
 }
 
 .chart-bloom .volume-bars-3d {
-  opacity: 0;
-  transform: translate3d(0, 12px, 0) scale(.985);
+  opacity: 1;
+  transform: none;
 }
 
 .panel.chart-bloom.is-bloomed > .volume-bars-3d,
 .chart-bloom.is-bloomed .volume-bars-3d {
   opacity: 1;
-  transform: translate3d(0, 0, 0) scale(1);
-  transition:
-    opacity .5s cubic-bezier(0.22, 1, 0.36, 1),
-    transform .62s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: none;
 }
 
 .chart-bloom.is-bloomed .volume-bar-column {
-  animation: bloom-volume-rise .72s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: bloom-volume-rise .96s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: var(--bar-delay, 0ms);
 }
 
 @keyframes bloom-volume-rise {
-  0% { transform: rotateX(58deg) rotateZ(-34deg) scaleY(.2); opacity: .45; }
-  100% { transform: rotateX(58deg) rotateZ(-34deg) scaleY(1); opacity: 1; }
+  0% { transform: scaleY(.06); opacity: .28; filter: saturate(.78) brightness(.78); }
+  62% { transform: scaleY(1.04); opacity: 1; filter: saturate(1.22) brightness(1.08); }
+  100% { transform: scaleY(1); opacity: 1; filter: saturate(1) brightness(1); }
 }
 
 /* ── Feature 8: CSS Houdini Paint Worklet ── */

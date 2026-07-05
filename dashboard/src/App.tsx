@@ -722,8 +722,6 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
       ".heat-grid",
       ".scatter",
       ".gauge",
-      ".lux-table",
-      ".activity-feed",
       ".volume-bars-3d"
     ].join(", ");
 
@@ -743,13 +741,15 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
       const rootRect = mobileScrollRoot?.getBoundingClientRect();
       const visibleTop = rootRect?.top ?? 0;
       const visibleBottom = rootRect?.bottom ?? window.innerHeight;
-      const enterMargin = Math.min(90, window.innerHeight * 0.1);
+      const enterAhead = Math.min(260, window.innerHeight * 0.28);
+      const enterFloor = Math.min(70, window.innerHeight * 0.08);
       const resetMargin = Math.min(260, window.innerHeight * 0.28);
       const rect = panel.getBoundingClientRect();
 
       return {
-        enters: rect.top < visibleBottom - enterMargin && rect.bottom > visibleTop + enterMargin,
-        exits: rect.bottom < visibleTop - resetMargin || rect.top > visibleBottom + resetMargin,
+        enters: rect.top < visibleBottom + enterAhead && rect.bottom > visibleTop + enterFloor,
+        exitsAbove: rect.bottom < visibleTop - resetMargin,
+        exitsBelow: rect.top > visibleBottom + resetMargin,
       };
     };
 
@@ -769,8 +769,13 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
     const syncBloomState = () => {
       scrollFrame = 0;
       scope.querySelectorAll<HTMLElement>(".panel.chart-bloom").forEach((panel) => {
-        const { enters } = getVisibilityState(panel);
-        if (enters) {
+        const { enters, exitsBelow } = getVisibilityState(panel);
+        if (scrollDirection === "up" && exitsBelow) {
+          panel.classList.remove("is-bloomed");
+          panel.dataset.bloomedOnce = "false";
+          return;
+        }
+        if (scrollDirection === "down" && enters && panel.dataset.bloomedOnce !== "true") {
           panel.classList.add("is-bloomed");
           panel.dataset.bloomedOnce = "true";
         }
@@ -797,8 +802,8 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
       const currentScrollTop = readScrollTop();
       setScrollDirection(currentScrollTop >= previousScrollTop ? "down" : "up");
       previousScrollTop = currentScrollTop;
-      if (scrollDirection !== "down") return;
       scheduleBloomSync();
+      if (scrollDirection !== "down") return;
       if (scrollWatchTimer) return;
       lastScrollTop = -1;
       scrollWatchTimer = window.setTimeout(watchScrollSettle, 34);
@@ -814,7 +819,7 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
       (entries) => {
         entries.forEach((entry) => {
           const panel = entry.target as HTMLElement;
-          if (entry.isIntersecting) {
+          if (entry.isIntersecting && scrollDirection === "down" && panel.dataset.bloomedOnce !== "true") {
             panel.classList.add("is-bloomed");
             panel.dataset.bloomedOnce = "true";
             return;
@@ -839,6 +844,7 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
     tagPanels();
     const frame = window.requestAnimationFrame(tagPanels);
     const shortTimer = window.setTimeout(tagPanels, 180);
+    const syncTimer = window.setTimeout(scheduleBloomSync, 320);
     const settledTimer = window.setTimeout(tagPanels, 700);
     const mutationObserver = new MutationObserver(tagPanels);
     mutationObserver.observe(scope, { childList: true, subtree: true });
@@ -854,6 +860,7 @@ function useChartBloom(root: React.RefObject<HTMLDivElement | null>, deps: unkno
       if (scrollFrame) window.cancelAnimationFrame(scrollFrame);
       if (scrollWatchTimer) window.clearTimeout(scrollWatchTimer);
       window.clearTimeout(shortTimer);
+      window.clearTimeout(syncTimer);
       window.clearTimeout(settledTimer);
       scrollTarget.removeEventListener("scroll", startScrollWatch);
       window.removeEventListener("wheel", handleWheelDirection);
@@ -1074,7 +1081,7 @@ function HeroShowcase({
   meta: { eyebrow: string; title: string; summary: string; primary: string; secondary: string; tertiary: string };
 }) {
   const { performanceTier, reducedMotion } = useLivingOS();
-  const ambientMotion = performanceTier === "high" && !reducedMotion;
+  const ambientMotion = performanceTier !== "minimal" && !reducedMotion;
   const labels = ["Primary signal", "Operational read", "Trend state"];
   const trendBars = [42, 68, 58, 88, 74, 92, 64, 98];
   const forecastPoints = [74, 52, 64, 58, 82, 76, 92, 88];
@@ -2369,7 +2376,7 @@ function ExecPulseCard({ title, value, label, tone, icon: Icon, delta }: {
   const { performanceTier, reducedMotion } = useLivingOS();
   const isNeg = delta.startsWith("-");
   const DeltaIcon = isNeg ? TrendingDown : TrendingUp;
-  const canTilt = performanceTier === "high" && !reducedMotion;
+  const canTilt = performanceTier !== "minimal" && !reducedMotion;
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const rotateX = useTransform(mouseY, [-0.5, 0.5], [8, -8]);
@@ -3114,8 +3121,8 @@ function Dashboard() {
   }, [activePage]);
 
   useEffect(() => {
-    const workspaceBody = root.current?.querySelector<HTMLElement>(".workspace-body");
-    workspaceBody?.scrollTo({ top: 0, behavior: "auto" });
+    const workspace = root.current?.querySelector<HTMLElement>(".workspace");
+    workspace?.scrollTo({ top: 0, behavior: "auto" });
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [activePage]);
 

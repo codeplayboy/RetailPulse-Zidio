@@ -58,11 +58,9 @@ function detectPerformanceTier(reducedMotion: boolean): PerformanceTier {
 
   const cores = navigator.hardwareConcurrency || 4;
   const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory || 4;
-  const compactViewport = window.innerWidth < 900;
   const highPixelDensity = window.devicePixelRatio > 2;
 
-  if (cores <= 4 || memory <= 4 || compactViewport) return "minimal";
-  if (cores <= 8 || memory <= 8 || highPixelDensity) return "balanced";
+  if (cores <= 6 || memory <= 4 || highPixelDensity) return "balanced";
   return "high";
 }
 
