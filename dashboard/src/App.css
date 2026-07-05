@@ -33,10 +33,10 @@ html, body {
 
 /* ── RetailPulse Premium Dashboard — Vibrant Neon Theme ── */
 .app-shell {
-  --bg: #0e0c2a;
-  --bg-soft: #13104a;
-  --surface: rgba(30, 20, 70, .72);
-  --surface-strong: rgba(22, 14, 58, .94);
+  --bg: #0b0624;
+  --bg-soft: #211064;
+  --surface: rgba(36, 20, 88, .78);
+  --surface-strong: rgba(26, 12, 70, .96);
   --surface-muted: rgba(255,255,255,.08);
   --text: #f4f2ff;
   --muted: rgba(210, 205, 255, .72);
@@ -63,7 +63,10 @@ html, body {
   padding: 18px;
   color: var(--text);
   background:
-    linear-gradient(180deg, rgba(4, 5, 10, .72), rgba(4, 5, 10, .82)),
+    radial-gradient(circle at 18% 0%, rgba(168,85,247,.3), transparent 32%),
+    radial-gradient(circle at 82% 10%, rgba(34,211,238,.14), transparent 30%),
+    radial-gradient(circle at 48% 82%, rgba(244,114,182,.16), transparent 34%),
+    linear-gradient(180deg, rgba(5, 4, 18, .58), rgba(8, 5, 26, .76)),
     url("/low-poly-grid-haikei.svg") center / cover no-repeat;
 }
 
@@ -97,7 +100,10 @@ html, body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(2, 4, 12, .08), rgba(2, 4, 12, .28));
+  background:
+    radial-gradient(circle at 20% 18%, rgba(168,85,247,.12), transparent 30%),
+    radial-gradient(circle at 82% 12%, rgba(34,211,238,.08), transparent 32%),
+    linear-gradient(180deg, rgba(2, 4, 12, .04), rgba(2, 4, 12, .14));
   z-index: 0;
 }
 
@@ -3995,7 +4001,7 @@ kbd {
     height: 100svh;
     padding: 0;
     gap: 0;
-    background-attachment: fixed;
+    background-attachment: scroll;
   }
 
   /* Use a single scroll container on mobile so the topbar and content stay in one flow. */
@@ -4988,19 +4994,6 @@ kbd {
   position: relative;
 }
 
-@supports (content-visibility: auto) {
-  .report-builder,
-  .media-studio,
-  .settings-grid {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 620px;
-  }
-
-  .metric-card {
-    contain-intrinsic-size: auto 180px;
-  }
-}
-
 .hero-panel,
 .metric-card,
 .panel,
@@ -5373,12 +5366,6 @@ kbd {
 }
 @media (prefers-reduced-motion: reduce) {
   .ink-reveal, .ink-reveal.ink-active { animation: none !important; opacity: 0 !important; }
-}
-
-/* ── Feature 3: Depth-of-Field (opacity-only — no filter repaint) ── */
-.panel {
-  opacity: var(--dof-opacity, 1);
-  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* ── Scroll Bloom: chart reveals without scroll-bound JS work ── */
@@ -5927,24 +5914,6 @@ kbd {
 }
 
 /* ── Feature 8: CSS Houdini Paint Worklet ── */
-@supports (background: paint(noise-bg)) {
-  .houdini-bg {
-    --noise-seed: 42;
-    --noise-alpha: 0.055;
-    --noise-color1: #a855f7;
-    --noise-color2: #22d3ee;
-    background: paint(noise-bg);
-  }
-  .panel, .metric-card, .kpi-grid-item {
-    --noise-seed: 17;
-    --noise-alpha: 0.032;
-    --noise-color1: #a855f7;
-    --noise-color2: #22d3ee;
-    background-image: paint(noise-bg);
-    background-size: cover;
-  }
-}
-
 /* ── Feature 9: Typed AI Insight / Blur-word Streaming ── */
 .insight-stream {
   line-height: 1.62;

@@ -3194,17 +3194,8 @@ function Dashboard() {
     };
   }, [performanceTier]);
 
-  // CSS Houdini paint worklet registration
-  useEffect(() => {
-    if ('paintWorklet' in CSS) {
-      (CSS as unknown as { paintWorklet: { addModule: (url: string) => void } }).paintWorklet.addModule(`${import.meta.env.BASE_URL}noise-bg.js`);
-    }
-  }, []);
-
   // Feature 1: Magnetic cursor
   useMagneticCursor(performanceTier !== 'minimal');
-  // Feature 3: Depth-of-field
-  useDepthOfField(performanceTier !== 'minimal');
 
   const handleSetActivePage = useCallback((id: PageId) => {
     setActivePage(id);
