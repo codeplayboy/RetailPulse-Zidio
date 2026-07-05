@@ -544,42 +544,82 @@ const DonutChartSection: React.FC<{
   values: number[];
   labels?: string[];
   colors: string[];
-}> = ({ values, labels = [], colors }) => (
-  <div
-    style={{
-      width: "100%",
-      height: "100%",
-      display: "grid",
-      gridTemplateColumns: "360px 1fr",
-      gap: 34,
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-  >
-    <div style={{ width: 300, height: 300, justifySelf: "center" }}>
-      <DonutRevealComposition values={values} colors={colors} />
+}> = ({ values, labels = [], colors }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const reveal = spring({ frame, fps, config: { damping: 24, stiffness: 95 } });
+  const safeValues = values.length ? values.slice(0, 5) : [100];
+  const total = Math.max(safeValues.reduce((sum, value) => sum + Math.max(0, value), 0), 1);
+  const shares = safeValues.map((value) => (Math.max(0, value) / total) * 100);
+  let offset = 0;
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "grid",
+        gridTemplateColumns: "300px minmax(0, 1fr)",
+        gap: 28,
+        alignItems: "center",
+      }}
+    >
+      <div style={{ width: 250, height: 250, justifySelf: "center", position: "relative" }}>
+        <svg viewBox="0 0 220 220" width="250" height="250" style={{ display: "block", overflow: "visible" }}>
+          <circle cx="110" cy="110" r="72" fill="rgba(4,7,20,.42)" stroke="rgba(255,255,255,.1)" strokeWidth="30" />
+          {shares.map((share, index) => {
+            const dashOffset = -offset;
+            offset += share;
+            return (
+              <circle
+                key={`${labels[index] ?? index}-${share}`}
+                cx="110"
+                cy="110"
+                r="72"
+                fill="none"
+                stroke={colors[index] ?? colors[0]}
+                strokeWidth="30"
+                pathLength="100"
+                strokeDasharray={`${Math.max(0, share * reveal)} ${100 - Math.max(0, share * reveal)}`}
+                strokeDashoffset={dashOffset}
+                strokeLinecap="butt"
+                transform="rotate(-90 110 110)"
+                opacity={0.96}
+                style={{ filter: `drop-shadow(0 0 12px ${colors[index] ?? colors[0]}66)` }}
+              />
+            );
+          })}
+          <circle cx="110" cy="110" r="50" fill="rgba(8,10,28,.96)" />
+          <text x="110" y="104" fill="white" textAnchor="middle" fontSize="31" fontWeight="950">
+            {Math.round(total)}%
+          </text>
+          <text x="110" y="127" fill="rgba(255,255,255,.58)" textAnchor="middle" fontSize="12" fontWeight="900" letterSpacing="2">
+            SHARE
+          </text>
+        </svg>
+      </div>
+      <div style={{ display: "grid", gap: 9, minWidth: 0 }}>
+        {shares.map((value, index) => (
+          <div key={`${labels[index] ?? index}-${value}`} style={{
+            display: "grid",
+            gridTemplateColumns: "12px minmax(0, 1fr) auto",
+            gap: 10,
+            alignItems: "center",
+            minWidth: 0,
+            padding: "8px 10px",
+            borderRadius: 14,
+            background: `linear-gradient(135deg, ${colors[index] ?? colors[0]}22, rgba(255,255,255,.035))`,
+            border: `1px solid ${colors[index] ?? colors[0]}44`,
+          }}>
+            <i style={{ width: 10, height: 10, borderRadius: 999, background: colors[index] ?? colors[0], boxShadow: `0 0 12px ${colors[index] ?? colors[0]}` }} />
+            <strong style={{ color: "white", fontSize: 16, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{labels[index] ?? `Segment ${index + 1}`}</strong>
+            <span style={{ color: colors[index] ?? colors[0], fontSize: 16, fontWeight: 950, whiteSpace: "nowrap" }}>{value.toFixed(1)}%</span>
+          </div>
+        ))}
+      </div>
     </div>
-    <div style={{ display: "grid", gap: 10, minWidth: 0 }}>
-      {values.slice(0, 5).map((value, index) => (
-        <div key={`${labels[index] ?? index}-${value}`} style={{
-          display: "grid",
-          gridTemplateColumns: "14px 1fr auto",
-          gap: 12,
-          alignItems: "center",
-          minWidth: 0,
-          padding: "9px 12px",
-          borderRadius: 16,
-          background: `linear-gradient(135deg, ${colors[index] ?? colors[0]}22, rgba(255,255,255,.035))`,
-          border: `1px solid ${colors[index] ?? colors[0]}44`,
-        }}>
-          <i style={{ width: 12, height: 12, borderRadius: 999, background: colors[index] ?? colors[0], boxShadow: `0 0 14px ${colors[index] ?? colors[0]}` }} />
-          <strong style={{ color: "white", fontSize: 18, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{labels[index] ?? `Segment ${index + 1}`}</strong>
-          <span style={{ color: colors[index] ?? colors[0], fontSize: 18, fontWeight: 950, whiteSpace: "nowrap" }}>{Math.round(value)}%</span>
-        </div>
-      ))}
-    </div>
-  </div>
-);
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GaugeChartSection  — semicircle arc with tick marks, needle, count-up value
@@ -778,11 +818,18 @@ const StreamStorySection: React.FC<{ rows: string[][]; accent: string; secondary
 const RankedStorySection: React.FC<{ rows: string[][]; bars: number[]; accent: string; secondary: string }> = ({ rows, bars, accent, secondary }) => {
   const frame = useCurrentFrame();
   const source = rows.length ? rows.slice(0, 5) : bars.slice(0, 5).map((value, i) => [`Product ${i + 1}`, `$${value.toFixed(1)}K`, `${Math.round(value)}%`]);
+  const numericValues = source.map((row, index) => {
+    const rowNumber = Number.parseFloat(String(row[1] ?? row[2] ?? "").replace(/[^0-9.]/g, ""));
+    return Number.isFinite(rowNumber) && rowNumber > 0 ? rowNumber : Math.max(1, bars[index] ?? 1);
+  });
+  const maxValue = Math.max(...numericValues, 1);
   return (
     <div style={{ width: "100%", height: "100%", display: "grid", gap: 11, alignContent: "center" }}>
       {source.map((row, index) => {
         const p = Math.max(0.38, spring({ frame: frame - index * 8, fps: 30, config: { damping: 24, stiffness: 120 } }));
-        const width = Math.max(18, Math.min(100, Number.parseFloat(String(row[2]).replace(/[^0-9.]/g, "")) || bars[index] || 60));
+        const value = numericValues[index] ?? 1;
+        const width = Math.max(16, Math.min(100, (value / maxValue) * 100));
+        const displayValue = row[1] ?? `${Math.round(value)} revenue`;
         return (
           <div key={`${row[0]}-${index}`} style={{
             display: "grid",
@@ -800,10 +847,12 @@ const RankedStorySection: React.FC<{ rows: string[][]; bars: number[]; accent: s
             <span style={{
               width: 36, height: 36, borderRadius: 12, display: "grid", placeItems: "center",
               background: `${accent}22`, border: `1px solid ${accent}55`, color: accent, fontWeight: 950,
+              transform: `scale(${0.92 + p * 0.08})`,
+              boxShadow: index === 0 ? `0 0 18px ${accent}66` : "none",
             }}>{index + 1}</span>
             <div style={{ minWidth: 0 }}>
               <strong style={{ display: "block", fontSize: 17, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row[0]}</strong>
-              <span style={{ display: "block", fontSize: 13, color: "rgba(255,255,255,.54)", fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{row[1] ?? "Revenue leader"}</span>
+              <span style={{ display: "block", fontSize: 13, color: "rgba(255,255,255,.54)", fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayValue}</span>
             </div>
             <div style={{ height: 13, borderRadius: 999, background: "rgba(255,255,255,.08)", overflow: "hidden" }}>
               <div style={{

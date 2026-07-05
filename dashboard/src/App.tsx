@@ -2523,6 +2523,10 @@ function OverviewPage() {
 function SegmentationPage() {
   const [activeTab, setActiveTab] = useState("Segments");
   const tabs = ["Segments", "RFM Analysis", "Clusters", "Playbooks"];
+  const showSegments = activeTab === "Segments";
+  const showRfm = activeTab === "RFM Analysis";
+  const showClusters = activeTab === "Clusters";
+  const showPlaybooks = activeTab === "Playbooks";
 
   return (
     <>
@@ -2541,13 +2545,34 @@ function SegmentationPage() {
         <span className="tab-status">Viewing {activeTab}</span>
       </section>
       <section className="dashboard-grid">
-        <Panel title="Segment Distribution" kicker="Share of customer base" icon={Users}><Donut labels={dashboardDataState.segmentLabels} values={dashboardDataState.segmentValues} /></Panel>
-        <Panel title="Customer Lifetime Value" kicker="Average CLV by segment" icon={Gem}><HorizontalBars labels={dashboardDataState.horizontalBarLabels} values={dashboardDataState.horizontalBarValues} /></Panel>
-        <Panel title="KMeans Cluster Scatter" kicker="Recency vs monetary, sized by frequency" icon={Brain}><ScatterPlot /></Panel>
-        <Panel title="RFM Score Heatmap" kicker="Recency, frequency, monetary heat" icon={Eye}><HeatMap /></Panel>
-        <Panel title="Segment Force Graph" kicker="Live physics â€” customer topology" icon={RadioTower}><ForceGraph /></Panel>
-        <Panel title="Territory Map" kicker="Voronoi â€” geographic density zones" icon={Layers3}><VoronoiCanvas /></Panel>
-        <Panel className="wide-panel" title="Customer Insights & Playbook" kicker="Recommended action per segment" icon={Sparkles}><SegmentCards /></Panel>
+        {showSegments && (
+          <>
+            <Panel title="Segment Distribution" kicker="Share of customer base" icon={Users}><Donut labels={dashboardDataState.segmentLabels} values={dashboardDataState.segmentValues} /></Panel>
+            <Panel title="Customer Lifetime Value" kicker="Average CLV by segment" icon={Gem}><HorizontalBars labels={dashboardDataState.horizontalBarLabels} values={dashboardDataState.horizontalBarValues} /></Panel>
+            <Panel className="wide-panel" title="Customer Insights & Playbook" kicker="Recommended action per segment" icon={Sparkles}><SegmentCards /></Panel>
+          </>
+        )}
+        {showRfm && (
+          <>
+            <Panel title="RFM Score Heatmap" kicker="Recency, frequency, monetary heat" icon={Eye}><HeatMap /></Panel>
+            <Panel title="Customer Lifetime Value" kicker="Average CLV by segment" icon={Gem}><HorizontalBars labels={dashboardDataState.horizontalBarLabels} values={dashboardDataState.horizontalBarValues} /></Panel>
+            <Panel className="wide-panel" title="Customer Insights & Playbook" kicker="Recommended action per RFM tier" icon={Sparkles}><SegmentCards /></Panel>
+          </>
+        )}
+        {showClusters && (
+          <>
+            <Panel title="KMeans Cluster Scatter" kicker="Recency vs monetary, sized by frequency" icon={Brain}><ScatterPlot /></Panel>
+            <Panel title="Segment Force Graph" kicker="Live physics - customer topology" icon={RadioTower}><ForceGraph /></Panel>
+            <Panel title="Territory Map" kicker="Voronoi - geographic density zones" icon={Layers3}><VoronoiCanvas /></Panel>
+          </>
+        )}
+        {showPlaybooks && (
+          <>
+            <Panel className="wide-panel" title="Customer Insights & Playbook" kicker="Recommended action per segment" icon={Sparkles}><SegmentCards /></Panel>
+            <Panel title="Segment Distribution" kicker="Share of customer base" icon={Users}><Donut labels={dashboardDataState.segmentLabels} values={dashboardDataState.segmentValues} /></Panel>
+            <Panel title="RFM Score Heatmap" kicker="Recency, frequency, monetary heat" icon={Eye}><HeatMap /></Panel>
+          </>
+        )}
       </section>
     </>
   );
