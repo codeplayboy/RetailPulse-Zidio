@@ -996,7 +996,7 @@ function Topbar({ page, setNavOpen, setCommandOpen, setAlertsOpen }: { page: Nav
       </div>
       <LiveClock />
       <ShellButton label="Open alerts" onClick={() => setAlertsOpen(true)}><Bell size={18} /><motion.i className="bell-badge" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 620, damping: 18, delay: 1.4 }} /></ShellButton>
-      <div className="user-chip"><span>R</span><strong>Rashad</strong></div>
+      <div className="user-chip"><span>S</span><strong>S.K.K.R</strong></div>
     </header>
   );
 }
@@ -2958,7 +2958,7 @@ function SettingsPage({ theme, setTheme }: { theme: ThemeMode; setTheme: (theme:
         <Control title="Engine" value="Prophet + regressors" />
       </AccordionPanel>
       <AccordionPanel title="User Management" kicker="Access control" icon={Lock}>
-        <LuxuryTable rows={[["Rashad", "Platform Integration", "Owner"], ["Kaviya", "Data Engineering", "Editor"], ["Rohinee", "Customer Intelligence", "Editor"], ["Sachin", "Forecasting", "Analyst"]]} />
+        <LuxuryTable rows={[["S.K.K.R", "Platform Integration", "Owner"], ["Kaviya", "Data Engineering", "Editor"], ["Rohinee", "Customer Intelligence", "Editor"], ["Sachin", "Forecasting", "Analyst"]]} />
       </AccordionPanel>
       <AccordionPanel title="Notification Settings" kicker="Configuration" icon={Bell}>
         <Control title="Email alerts" value="Enabled" />
