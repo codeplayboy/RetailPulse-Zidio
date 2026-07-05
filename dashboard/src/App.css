@@ -1509,11 +1509,11 @@ kbd {
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(112deg, transparent 0%, rgba(255,255,255,.16) 44%, transparent 62%),
+    linear-gradient(112deg, transparent 0%, rgba(255,255,255,.09) 44%, transparent 62%),
     radial-gradient(circle at var(--mx, 62%) 28%, rgba(34,211,238,.16), transparent 34%);
-  opacity: .56;
-  transform: translateX(-72%);
-  animation: hero-metric-sweep 5.8s cubic-bezier(.2,.8,.2,1) infinite;
+  opacity: .42;
+  transform: none;
+  animation: none;
 }
 
 .hero-metric-card::after {
@@ -1529,7 +1529,7 @@ kbd {
   clip-path: polygon(0 72%, 14% 48%, 28% 64%, 42% 22%, 56% 52%, 70% 30%, 84% 58%, 100% 18%, 100% 100%, 0 100%);
   filter: drop-shadow(0 0 12px rgba(34,211,238,.25));
   transform-origin: bottom;
-  animation: hero-signal-breathe 2.6s ease-in-out infinite;
+  animation: none;
 }
 
 .hero-metrics div:nth-child(1) {
@@ -1547,9 +1547,11 @@ kbd {
   border-color: rgba(251,191,36,.32);
 }
 
-.hero-metrics div:nth-child(1)::before { animation-delay: 0s; }
-.hero-metrics div:nth-child(2)::before { animation-delay: .75s; }
-.hero-metrics div:nth-child(3)::before { animation-delay: 1.45s; }
+.hero-metrics div:nth-child(1)::before,
+.hero-metrics div:nth-child(2)::before,
+.hero-metrics div:nth-child(3)::before {
+  animation-delay: 0s;
+}
 
 .metric-live-beacon {
   position: absolute;
@@ -1559,8 +1561,8 @@ kbd {
   height: 9px;
   border-radius: 999px;
   background: #67e8f9;
-  box-shadow: 0 0 0 0 rgba(103,232,249,.45), 0 0 18px rgba(103,232,249,.64);
-  animation: metric-beacon-pulse 1.9s ease-out infinite;
+  box-shadow: 0 0 18px rgba(103,232,249,.64);
+  animation: none;
 }
 
 .metric-signal-line {
@@ -1578,8 +1580,9 @@ kbd {
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg, transparent, rgba(34,211,238,.8), rgba(251,191,36,.78), transparent);
-  transform: translateX(-100%);
-  animation: metric-signal-run 3.4s ease-in-out infinite;
+  opacity: .34;
+  transform: none;
+  animation: none;
 }
 
 .hero-metrics div:hover {
@@ -6208,9 +6211,18 @@ kbd {
   }
 
   .revenue-line-wrapper {
-    overflow-x: hidden;
-    overflow-y: hidden;
+    overflow: visible;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .revenue-line {
+    height: 310px;
+    padding: 16px 10px 18px;
+    overflow: visible;
+  }
+
+  .revenue-line.compact {
+    height: 280px;
   }
 
   .revenue-line-wrapper .revenue-scanner {
@@ -6219,20 +6231,54 @@ kbd {
 
   .combo-bars {
     width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
+    min-height: 310px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 10px 8px;
+    padding: 14px 10px 16px;
+    overflow: visible;
+  }
+
+  .bar-plot,
+  .bar-months {
+    min-width: 0;
+    width: 100%;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .bar-plot {
+    min-height: 230px;
+  }
+
+  .bar-cluster {
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .bar-axis {
+    font-size: .66rem;
+    padding-bottom: 36px;
+  }
+
+  .bar-months {
+    font-size: .62rem;
+    letter-spacing: 0;
+  }
+
+  .chart-legend {
+    flex-wrap: wrap;
+    row-gap: 6px;
   }
 
   .donut-layout {
     width: 100%;
     grid-template-columns: minmax(0, 1fr);
     justify-items: center;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .donut {
-    width: min(72vw, 252px);
+    width: min(82vw, 286px);
     max-width: 100%;
     justify-self: center;
   }
@@ -6240,5 +6286,38 @@ kbd {
   .legend {
     width: 100%;
     min-width: 0;
+  }
+
+  .gauge {
+    overflow: visible;
+    min-height: 340px;
+  }
+
+  .gauge svg {
+    width: min(100%, 360px);
+    overflow: visible;
+  }
+
+  .volume-bars-3d {
+    overflow: visible;
+    min-height: 370px;
+  }
+
+  .volume-bars-3d.faux-3d {
+    grid-template-rows: auto minmax(270px, 1fr);
+    padding: 16px 10px 26px;
+  }
+
+  .volume-bars-grid {
+    min-height: 258px;
+    gap: 4px;
+    padding-inline: 2px;
+    overflow: visible;
+  }
+
+  .volume-bar-value {
+    min-width: 34px;
+    padding: 3px 5px;
+    font-size: .54rem;
   }
 }
