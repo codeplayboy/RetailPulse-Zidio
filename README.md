@@ -22,7 +22,7 @@ The platform converts retail transaction and inventory data into cleaned dataset
 ## Introduction and Dashboard Demo Video
 
 <a href="https://drive.google.com/file/d/12zclOl2Y1PuXtEwLyYUIKh6xQS21I_CK/preview">
-  <img src="https://drive.google.com/thumbnail?id=12zclOl2Y1PuXtEwLyYUIKh6xQS21I_CK&sz=w1200" alt="Watch the RetailPulse-Zidio introduction and dashboard demo video" width="100%">
+  <img src="docs/assets/retailpulse-demo-video-thumbnail.png" alt="Watch the RetailPulse-Zidio introduction and dashboard demo video" width="100%">
 </a>
 
 **Watch the 19-minute project introduction and dashboard demo:**  
@@ -71,7 +71,7 @@ We sincerely thank Zidio for providing this internship opportunity and giving us
 
 | Media Studio | Mobile Layout |
 | --- | --- |
-| ![Media Studio](docs/dashboard_evidence/desktop_09_media.png) | ![Mobile Layout](docs/dashboard_evidence/mobile_01_overview.png) |
+| ![Media Studio](docs/dashboard_evidence/desktop_09_media.png) | ![Mobile Layout](docs/assets/retailpulse-mobile-preview.png) |
 
 ## Problem Statement
 
