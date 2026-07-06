@@ -19,6 +19,15 @@ The platform converts retail transaction and inventory data into cleaned dataset
 **Platform integration and dashboard lead:** Rashad Roushan  
 **Production dashboard:** [https://dashboard-rho-pied-52.vercel.app](https://dashboard-rho-pied-52.vercel.app)
 
+## Introduction and Dashboard Demo Video
+
+<a href="https://drive.google.com/file/d/12zclOl2Y1PuXtEwLyYUIKh6xQS21I_CK/preview">
+  <img src="https://drive.google.com/thumbnail?id=12zclOl2Y1PuXtEwLyYUIKh6xQS21I_CK&sz=w1200" alt="Watch the RetailPulse-Zidio introduction and dashboard demo video" width="100%">
+</a>
+
+**Watch the 19-minute project introduction and dashboard demo:**  
+[Open the streaming demo video](https://drive.google.com/file/d/12zclOl2Y1PuXtEwLyYUIKh6xQS21I_CK/preview)
+
 ## Project Highlights
 
 - Live React + TypeScript dashboard for executive retail analytics
